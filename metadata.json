@@ -1,0 +1,6 @@
+{
+  "name": "Alzheimer's MRI Classifier & Explainable AI",
+  "description": "Deep learning diagnosis system utilizing PyTorch EfficientNet-B3, Grad-CAM visual interpretability, and PostgreSQL/SQLite historical analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+myenv/
+venv/
+.venv/
+
+# Uploaded files
+backend/uploads/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+build/

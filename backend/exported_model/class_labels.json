@@ -1,0 +1,14 @@
+{
+  "classes": [
+    "NonDemented",
+    "VeryMildDemented",
+    "MildDemented",
+    "ModerateDemented"
+  ],
+  "label_to_idx": {
+    "NonDemented": 0,
+    "VeryMildDemented": 1,
+    "MildDemented": 2,
+    "ModerateDemented": 3
+  }
+}

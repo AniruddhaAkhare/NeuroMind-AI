@@ -1,0 +1,12 @@
+{
+  "model": "EfficientNet-B3",
+  "pretrained": true,
+  "fine_tuned_blocks": "last 3 feature blocks",
+  "input_size": 300,
+  "num_classes": 4,
+  "validation_accuracy": 0.7969,
+  "validation_macro_f1": 0.8387,
+  "test_accuracy": 0.7583,
+  "test_macro_f1": 0.7949,
+  "test_weighted_f1": 0.7595
+}
