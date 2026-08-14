@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, BarChart3, CheckCircle2, FileText, ArrowUpRight, Loader2, Brain } from 'lucide-react';
-import { fetchStats } from '../services/api';
+import { getDashboardStats } from '../services/api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -12,7 +12,7 @@ export default function Dashboard() {
     async function loadStats() {
       try {
         setLoading(true);
-        const data = await fetchStats();
+        const data = await getDashboardStats();
         setStats(data);
       } catch (err) {
         setError(err.response?.data?.error || err.message || 'Failed to load system metrics');

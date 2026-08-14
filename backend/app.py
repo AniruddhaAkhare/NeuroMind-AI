@@ -1,205 +1,176 @@
+"""
+NeuroMind AI — Flask Application Factory
+"""
+import atexit
 from flask import Flask, jsonify, send_from_directory
+from flask_jwt_extended import jwt_required
 
 from config import Config
-from extensions import cors, jwt
+from extensions import cors, jwt, db, migrate, limiter, scheduler
 from database.db import init_db
 
+# ---- Import all models so SQLAlchemy discovers them --------
+import database.models  # noqa: F401
+
+# ---- Blueprints --------------------------------------------
 from routes.auth_routes import auth_bp
 from routes.prediction_routes import prediction_bp
 from routes.history_routes import history_bp
+from routes.patient_routes import patient_bp
+from routes.report_routes import report_bp
+from routes.rag_routes import rag_bp
+from routes.analytics_routes import analytics_bp
+from routes.appointment_routes import appointment_bp
+from routes.doctor_routes import doctor_bp
+from routes.notification_routes import notification_bp
+from routes.admin_routes import admin_bp
+
+# ---- Background jobs ---------------------------------------
+from tasks.reminder_jobs import register_reminder_jobs
 
 
 def create_app():
 
-    # ============================================================
-    # CREATE FLASK APPLICATION
-    # ============================================================
-
     app = Flask(__name__)
-
-    # Load configuration
     app.config.from_object(Config)
 
-    # ============================================================
-    # INITIALIZE CORS
-    # ============================================================
+    # ========================================================
+    # INITIALIZE EXTENSIONS
+    # ========================================================
 
     cors.init_app(
         app,
-        resources={
-            r"/api/*": {
-                "origins": "*"
-            }
-        }
+        resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
+        supports_credentials=True,
     )
-
-    # ============================================================
-    # INITIALIZE JWT
-    # ============================================================
 
     jwt.init_app(app)
+    limiter.init_app(app)
 
-    # ============================================================
-    # INITIALIZE DATABASE
-    #
-    # IMPORTANT:
-    # init_db() calls db.init_app(app), so we DO NOT
-    # call db.init_app(app) separately here.
-    # ============================================================
-
+    # ---- DB + Migrations -----------------------------------
     init_db(app)
+    migrate.init_app(app, db)
 
-    # ============================================================
+    # ========================================================
     # REGISTER BLUEPRINTS
-    # ============================================================
+    # ========================================================
 
-    app.register_blueprint(
-        auth_bp,
-        url_prefix="/api"
-    )
+    blueprints = [
+        (auth_bp,         "/api"),
+        (prediction_bp,   "/api"),
+        (history_bp,      "/api"),
+        (patient_bp,      "/api"),
+        (report_bp,       "/api"),
+        (rag_bp,          "/api"),
+        (analytics_bp,    "/api"),
+        (appointment_bp,  "/api"),
+        (doctor_bp,       "/api"),
+        (notification_bp, "/api"),
+        (admin_bp,        "/api"),
+    ]
 
-    app.register_blueprint(
-        prediction_bp,
-        url_prefix="/api"
-    )
+    for blueprint, prefix in blueprints:
+        app.register_blueprint(blueprint, url_prefix=prefix)
 
-    app.register_blueprint(
-        history_bp,
-        url_prefix="/api"
-    )
-
-    # ============================================================
-    # ROOT HEALTH CHECK
-    # ============================================================
+    # ========================================================
+    # HEALTH ENDPOINTS
+    # ========================================================
 
     @app.route("/", methods=["GET"])
     def root_health():
-
         return jsonify({
             "status": "healthy",
-            "system": (
-                "Alzheimer's MRI Detection "
-                "& Explainable AI"
-            ),
+            "system": "NeuroMind AI — Dementia Clinical Intelligence Platform",
             "model": "EfficientNet-B3",
             "database": "PostgreSQL",
-            "authentication": "JWT"
+            "authentication": "JWT",
+            "version": "2.0.0",
         }), 200
-
-    # ============================================================
-    # API HEALTH CHECK
-    # ============================================================
 
     @app.route("/api/health", methods=["GET"])
     def api_health():
-
         return jsonify({
             "status": "healthy",
             "model": "EfficientNet-B3",
             "database": "PostgreSQL",
-            "authentication": "JWT"
+            "authentication": "JWT",
         }), 200
 
-    # ============================================================
-    # SERVE UPLOADED FILES
-    # ============================================================
+    # ========================================================
+    # SERVE UPLOADED FILES (auth-protected)
+    # ========================================================
 
-    @app.route(
-        "/uploads/<path:filename>",
-        methods=["GET"]
-    )
+    @app.route("/uploads/<path:filename>", methods=["GET"])
+    @jwt_required()
     def serve_uploaded_file(filename):
+        return send_from_directory(Config.UPLOAD_FOLDER, filename)
 
-        return send_from_directory(
-            Config.UPLOAD_FOLDER,
-            filename
-        )
-
-    # ============================================================
-    # FILE TOO LARGE
-    # ============================================================
-
-    @app.errorhandler(413)
-    def request_entity_too_large(error):
-
-        return jsonify({
-            "success": False,
-            "error": (
-                "File size exceeds the "
-                "maximum allowed limit of 10MB."
-            )
-        }), 413
-
-    # ============================================================
-    # BAD REQUEST
-    # ============================================================
+    # ========================================================
+    # ERROR HANDLERS
+    # ========================================================
 
     @app.errorhandler(400)
     def bad_request(error):
-
-        description = getattr(
-            error,
-            "description",
-            "Bad Request"
-        )
-
-        return jsonify({
-            "success": False,
-            "error": str(description)
-        }), 400
-
-    # ============================================================
-    # UNAUTHORIZED
-    # ============================================================
+        return jsonify({"success": False, "error": str(getattr(error, "description", "Bad Request"))}), 400
 
     @app.errorhandler(401)
     def unauthorized(error):
+        return jsonify({"success": False, "error": "Authentication required."}), 401
 
-        return jsonify({
-            "success": False,
-            "error": "Authentication required."
-        }), 401
-
-    # ============================================================
-    # NOT FOUND
-    # ============================================================
+    @app.errorhandler(403)
+    def forbidden(error):
+        return jsonify({"success": False, "error": "Access denied."}), 403
 
     @app.errorhandler(404)
     def not_found(error):
+        return jsonify({"success": False, "error": "Endpoint not found."}), 404
 
-        return jsonify({
-            "success": False,
-            "error": "Endpoint not found."
-        }), 404
+    @app.errorhandler(413)
+    def too_large(error):
+        return jsonify({"success": False, "error": "File exceeds maximum allowed size."}), 413
 
-    # ============================================================
-    # INTERNAL SERVER ERROR
-    # ============================================================
+    @app.errorhandler(429)
+    def too_many_requests(error):
+        return jsonify({"success": False, "error": "Too many requests. Please try again later."}), 429
 
     @app.errorhandler(500)
     def internal_error(error):
+        return jsonify({"success": False, "error": "An internal server error occurred."}), 500
 
-        return jsonify({
-            "success": False,
-            "error": (
-                "An internal server error occurred "
-                "while processing your request."
-            )
-        }), 500
+    # ========================================================
+    # JWT EXTENDED CALLBACKS
+    # ========================================================
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(reason):
+        return jsonify({"success": False, "error": f"Missing token: {reason}"}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(reason):
+        return jsonify({"success": False, "error": f"Invalid token: {reason}"}), 422
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_data):
+        return jsonify({"success": False, "error": "Token has expired. Please log in again."}), 401
+
+    # ========================================================
+    # START APSCHEDULER
+    # ========================================================
+
+    with app.app_context():
+        register_reminder_jobs(app, scheduler)
+
+    if not scheduler.running:
+        scheduler.start()
+        atexit.register(lambda: scheduler.shutdown(wait=False))
 
     return app
 
 
 # ============================================================
-# RUN APPLICATION
+# ENTRY POINT
 # ============================================================
 
 if __name__ == "__main__":
-
     app = create_app()
-
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True
-    )
+    app.run(host="0.0.0.0", port=5000, debug=Config.DEBUG)

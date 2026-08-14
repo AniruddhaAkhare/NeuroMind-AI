@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "python3 backend/app.py & vite --port=3000 --host=0.0.0.0",
+    "dev": "python3 ../backend/app.py & vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -13,15 +13,23 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@tanstack/react-query": "^5.51.23",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.19.0",
+    "date-fns": "^3.6.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
+    "mapbox-gl": "^3.5.2",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-hot-toast": "^2.4.1",
+    "react-map-gl": "^7.1.7",
     "react-router-dom": "^7.18.2",
+    "recharts": "^2.12.7",
+    "i18next": "^23.11.2",
+    "react-i18next": "^14.1.0",
     "vite": "^6.2.3"
   },
   "devDependencies": {
