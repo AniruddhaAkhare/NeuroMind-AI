@@ -109,7 +109,10 @@ export const predictMRI = async (imageFile, formDataObj = {}, onUploadProgress) 
 };
 
 export const getPredictionHistory = async (params = {}) => (await api.get("/history", { params })).data;
-export const getPredictionById = async (id) => (await api.get(`/history/${id}`)).data;
+export const getPredictionById = async (id) => {
+  const response = (await api.get(`/history/${id}`)).data;
+  return response && response.prediction ? response.prediction : response;
+};
 export const deletePrediction = async (id) => (await api.delete(`/history/${id}`)).data;
 
 // ============================================================

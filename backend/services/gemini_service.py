@@ -39,7 +39,11 @@ class GeminiService:
         if self.model:
             try:
                 prompt = self._build_gemini_dossier_prompt(patient_data, prediction_data, risk_level, region_importance)
-                response = self.model.generate_content(prompt)
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config={"max_output_tokens": 1400, "temperature": 0.2},
+                    request_options={"timeout": 10}
+                )
                 raw_text = response.text.strip()
                 
                 # Strip markdown json fences if present

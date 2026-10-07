@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Check } from "lucide-react";
 
 
 // ============================================================
@@ -850,7 +851,7 @@ function Login() {
                     fontWeight: 800,
                   }}
                 >
-                  ✓
+                  <Check className="w-3 h-3 text-indigo-600 inline" />
                 </span>
 
                 Secure JWT authenticated session

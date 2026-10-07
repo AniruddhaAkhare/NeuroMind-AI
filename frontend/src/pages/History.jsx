@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Search, Filter, Trash2, ArrowUpDown, Loader2, Eye, 
   AlertCircle, FileText, Calendar, Activity, SplitSquareVertical, 
-  X, CheckCircle2, ChevronRight, Layers, Sparkles 
+  X, CheckCircle2, ChevronRight, Layers, Sparkles, ArrowRight 
 } from 'lucide-react';
 import { fetchHistory, deletePrediction, getFileUrl } from '../services/api';
 
@@ -363,8 +363,10 @@ export default function History() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400">Trajectory:</span>
-                <span className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-950 text-blue-300 border border-blue-800">
-                  {sortedPair.baseline.predicted_class} ➔ {sortedPair.followUp.predicted_class}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-950 text-blue-300 border border-blue-800">
+                  <span>{sortedPair.baseline.predicted_class}</span>
+                  <ArrowRight className="w-3 h-3 text-cyan-400" />
+                  <span>{sortedPair.followUp.predicted_class}</span>
                 </span>
                 <span
                   className={`px-3 py-1 rounded-lg text-xs font-bold border ${

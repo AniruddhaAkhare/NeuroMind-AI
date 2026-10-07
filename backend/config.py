@@ -124,7 +124,7 @@ MODEL_INFO_PATH = MODEL_FOLDER / "model_info.json"
 # CORS
 # ============================================================
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 
 # ============================================================

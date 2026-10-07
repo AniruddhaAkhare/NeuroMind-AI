@@ -15,18 +15,18 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-50 transition-colors shadow-xs">
+    <header className="border-b border-cyan-500/20 bg-[#050814]/85 backdrop-blur-xl sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-105 transition-all shadow-xs">
-            <Brain className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-cyan-950/70 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:scale-105 group-hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+            <Brain className="w-5 h-5 animate-pulse" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-extrabold tracking-wider text-slate-900 font-display">
+            <span className="text-xl font-extrabold tracking-wider text-white font-display">
               NEUROVIA
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-mono">
+            <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono">
               CLINICAL AI
             </span>
           </div>
@@ -43,11 +43,11 @@ export default function Navbar() {
                 to={item.path}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+                    ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] font-bold'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-white/5 border border-transparent'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-500'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
                 <span>{item.name}</span>
               </Link>
             );
@@ -56,14 +56,14 @@ export default function Navbar() {
 
         {/* Engine Status & CTA */}
         <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-mono font-medium">
-            <Activity className="w-3 h-3 animate-pulse text-emerald-600" />
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-medium shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+            <Activity className="w-3 h-3 animate-pulse text-emerald-400" />
             <span>EfficientNet-B3 Engine Online</span>
           </div>
 
           <Link
             to="/analyze"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-wide transition-all shadow-sm hover:shadow-md"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs tracking-wide transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-[1.02] active:scale-[0.98]"
           >
             <Search className="w-3.5 h-3.5" />
             <span>Scan MRI</span>
