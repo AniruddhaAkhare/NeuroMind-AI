@@ -1,30 +1,31 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, Brain, History, Info, LayoutDashboard, Search } from 'lucide-react';
+import { Activity, Brain, History, Info, LayoutDashboard, Search, Sparkles } from 'lucide-react';
 
 export default function Navbar() {
   const location = useLocation();
 
   const navLinks = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Workstation', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Analyze MRI', path: '/analyze', icon: Search },
-    { name: 'History Log', path: '/history', icon: History },
-    { name: 'About & Model', path: '/about', icon: Info },
+    { name: 'Audit Log', path: '/history', icon: History },
+    { name: 'Clinical Assistant', path: '/assistant', icon: Sparkles },
+    { name: 'Hospitals', path: '/hospitals', icon: Info },
   ];
 
   return (
-    <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">
-            <Brain className="w-6 h-6" />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600 group-hover:scale-105 transition-transform shadow-xs">
+            <Brain className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Alzheimer's AI Detection
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-black tracking-wider text-slate-900 font-mono">
+              NEUROVIA
             </span>
-            <span className="hidden sm:inline-block ml-2 text-xs text-slate-400 font-medium">
-              v1.0 • EfficientNet-B3
+            <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded">
+              CLINICAL AI
             </span>
           </div>
         </Link>
@@ -37,13 +38,13 @@ export default function Navbar() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   isActive
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    ? 'bg-teal-50 text-teal-700 border border-teal-200 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{item.name}</span>
               </Link>
             );
@@ -51,10 +52,17 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-            <Activity className="w-3.5 h-3.5 animate-pulse" />
-            <span>PyTorch Engine Ready</span>
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+            <Activity className="w-3 h-3 animate-pulse text-emerald-600" />
+            <span>EfficientNet-B3 Engine Online</span>
           </div>
+
+          <Link
+            to="/analyze"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-colors shadow-xs"
+          >
+            <span>Scan MRI</span>
+          </Link>
         </div>
       </div>
     </header>

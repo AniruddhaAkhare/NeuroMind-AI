@@ -4,7 +4,7 @@ from extensions import db
 def init_db(app):
     """
     Initialize SQLAlchemy with the Flask application
-    and create the required PostgreSQL tables.
+    and create the required database tables.
     """
 
     database_url = app.config.get(
@@ -16,34 +16,18 @@ def init_db(app):
             "SQLALCHEMY_DATABASE_URI is not configured."
         )
 
-    if not database_url.startswith("postgresql"):
-        raise RuntimeError(
-            "Invalid database configuration. "
-            "This application requires PostgreSQL."
-        )
-
     # Initialize SQLAlchemy
     db.init_app(app)
 
     # Create database tables
     with app.app_context():
-
         try:
             db.create_all()
-
+            db_target = database_url.split('@')[-1] if '@' in database_url else database_url
             print(
-                "Successfully connected to PostgreSQL "
-                "and initialized database schema."
+                f"Successfully connected to database and initialized schema ({db_target})."
             )
-
-            print(
-                f"Database URI: "
-                f"{database_url.split('@')[-1]}"
-            )
-
         except Exception as exc:
-
             raise RuntimeError(
-                "Failed to initialize PostgreSQL database. "
-                f"Error: {exc}"
+                f"Failed to initialize database: {exc}"
             ) from exc

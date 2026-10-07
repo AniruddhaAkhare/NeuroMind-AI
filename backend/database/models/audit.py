@@ -37,8 +37,8 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(50), nullable=True)
     user_agent = db.Column(db.String(512), nullable=True)
 
-    # Extra detail
-    metadata = db.Column(db.JSON, nullable=True)
+    # Extra detail (renamed from metadata to event_metadata to avoid declarative collision)
+    event_metadata = db.Column("event_metadata", db.JSON, nullable=True)
 
     created_at = db.Column(
         db.DateTime(timezone=True),
@@ -53,6 +53,11 @@ class AuditLog(db.Model):
         foreign_keys=[actor_id],
     )
 
+    def __init__(self, **kwargs):
+        if "metadata" in kwargs:
+            kwargs["event_metadata"] = kwargs.pop("metadata")
+        super().__init__(**kwargs)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -63,7 +68,7 @@ class AuditLog(db.Model):
             "target_type": self.target_type,
             "target_id": self.target_id,
             "ip_address": self.ip_address,
-            "metadata": self.metadata,
+            "metadata": self.event_metadata,
             "created_at": (
                 self.created_at.isoformat() if self.created_at else None
             ),

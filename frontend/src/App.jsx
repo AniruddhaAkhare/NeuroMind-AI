@@ -21,6 +21,7 @@ import History from "./pages/History";
 import About from "./pages/About";
 import Hospitals from "./pages/Hospitals";
 import RAGAssistant from "./pages/RAGAssistant";
+import MedicalVault from "./pages/MedicalVault";
 
 function App() {
   return (
@@ -44,7 +45,7 @@ function App() {
             
             {/* Common Dashboard Routing Logic will handle redirecting 
                 from /dashboard to specific role dashboards */}
-            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/doctor/dashboard" replace />} />
             
             {/* Specific Role Dashboards */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -54,8 +55,10 @@ function App() {
 
             {/* Features */}
             <Route path="/analyze" element={<Analyze />} />
+            <Route path="/result/:id" element={<Result />} />
             <Route path="/result" element={<Result />} />
             <Route path="/history" element={<History />} />
+            <Route path="/vault" element={<MedicalVault />} />
             <Route path="/hospitals" element={<Hospitals />} />
             <Route path="/assistant" element={<RAGAssistant />} />
             <Route path="/about" element={<About />} />

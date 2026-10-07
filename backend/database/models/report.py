@@ -73,6 +73,16 @@ class ClinicalReport(db.Model):
     generated_by = db.relationship("User", foreign_keys=[generated_by_id])
 
     def to_dict(self):
+        import json
+        dossier_data = None
+        if self.ai_narrative:
+            try:
+                stripped = self.ai_narrative.strip()
+                if stripped.startswith("{") or stripped.startswith("["):
+                    dossier_data = json.loads(stripped)
+            except Exception:
+                dossier_data = None
+
         return {
             "id": self.id,
             "prediction_id": self.prediction_id,
@@ -82,6 +92,7 @@ class ClinicalReport(db.Model):
                 self.generated_by.full_name if self.generated_by else None
             ),
             "ai_narrative": self.ai_narrative,
+            "clinical_dossier": dossier_data,
             "clinical_observations": self.clinical_observations,
             "recommendations": self.recommendations,
             "disease_stage": self.disease_stage,

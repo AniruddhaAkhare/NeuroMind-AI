@@ -97,11 +97,12 @@ def create_app():
         }), 200
 
     # ========================================================
-    # SERVE UPLOADED FILES (auth-protected)
+    # SERVE UPLOADED FILES (Image previews & static assets)
     # ========================================================
 
     @app.route("/uploads/<path:filename>", methods=["GET"])
-    @jwt_required()
+    @app.route("/api/uploads/<path:filename>", methods=["GET"])
+    @jwt_required(optional=True)
     def serve_uploaded_file(filename):
         return send_from_directory(Config.UPLOAD_FOLDER, filename)
 

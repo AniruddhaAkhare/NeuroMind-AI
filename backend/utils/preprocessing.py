@@ -22,12 +22,21 @@ def validate_image_file(file, allowed_extensions, allowed_mimes, max_length):
     if not file or file.filename == '':
         return False, 'No file provided'
     
-    filename = file.filename
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    if ext not in allowed_extensions:
+    filename = file.filename.lower()
+    # Check for compound extensions like .nii.gz first
+    ext = None
+    if filename.endswith(".nii.gz"):
+        ext = "nii.gz"
+    elif '.' in filename:
+        ext = filename.rsplit('.', 1)[-1]
+    
+    if not ext or ext not in allowed_extensions:
         return False, f'Unsupported file format .{ext}. Allowed: {", ".join(allowed_extensions)}'
     
     if file.mimetype and file.mimetype.lower() not in allowed_mimes:
-        return False, f'Invalid file MIME type: {file.mimetype}'
+        # Some OS upload DICOM/NIfTI as application/octet-stream or generic binary
+        if ext not in ["dcm", "nii", "nii.gz"]:
+            return False, f'Invalid file MIME type: {file.mimetype}'
         
     return True, None
+

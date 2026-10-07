@@ -111,6 +111,7 @@ def book_appointment():
 # ============================================================
 
 @appointment_bp.route("/appointments", methods=["GET"])
+@appointment_bp.route("/appointments/my", methods=["GET"])
 @jwt_required()
 def list_appointments():
     current_user = get_current_user()

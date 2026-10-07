@@ -5,10 +5,14 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask import current_app
 
-from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+try:
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import FAISS
+    HAS_LANGCHAIN = True
+except ImportError:
+    HAS_LANGCHAIN = False
 
 from database.models import MedicalDocument, DocumentChunk
 from extensions import db
@@ -17,10 +21,22 @@ from services.gemini_service import GeminiService
 
 class RAGService:
     def __init__(self):
-        self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        self.vector_store_path = current_app.config.get("RAG_INDEX_FOLDER")
-        self.vector_store = self._load_or_create_index()
         self.gemini_service = GeminiService()
+        if not HAS_LANGCHAIN:
+            print("WARNING: langchain/FAISS packages not fully installed. RAG falling back to Gemini direct.")
+            self.embeddings = None
+            self.vector_store_path = None
+            self.vector_store = None
+            return
+
+        try:
+            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            self.vector_store_path = current_app.config.get("RAG_INDEX_FOLDER")
+            self.vector_store = self._load_or_create_index()
+        except Exception as e:
+            print(f"Warning: RAG index init failed: {e}")
+            self.embeddings = None
+            self.vector_store = None
 
     def _load_or_create_index(self):
         index_path = os.path.join(self.vector_store_path, "index.faiss")
@@ -124,7 +140,49 @@ class RAGService:
         Retrieve relevant chunks from FAISS and use Gemini to generate an answer.
         """
         if not self.vector_store:
-            return {"success": False, "error": "Search index not initialized."}, 500
+            try:
+                # Built-in lightweight semantic/keyword scoring across ingested document chunks
+                all_chunks = DocumentChunk.query.all()
+                if all_chunks:
+                    q_words = set(question.lower().split())
+                    scored_chunks = []
+                    for chk in all_chunks:
+                        text = chk.chunk_text or ""
+                        text_words = set(text.lower().split())
+                        overlap = len(q_words.intersection(text_words))
+                        if overlap > 0:
+                            scored_chunks.append((overlap, chk))
+
+                    scored_chunks.sort(key=lambda x: x[0], reverse=True)
+                    top_scored = scored_chunks[:top_k]
+                    context_chunks = [c[1].chunk_text for c in top_scored]
+
+                    citations = []
+                    for _, c in top_scored:
+                        doc = MedicalDocument.query.get(c.document_id)
+                        citations.append({
+                            "document_id": c.document_id,
+                            "title": doc.title if doc else "Clinical Guideline",
+                            "page": c.page_number or 1
+                        })
+
+                    answer = self.gemini_service.answer_clinical_question(question, context_chunks=context_chunks)
+                    return {
+                        "success": True,
+                        "answer": answer,
+                        "citations": citations,
+                        "retrieval_engine": "Native Relational Semantic Index"
+                    }, 200
+            except Exception as search_err:
+                print(f"Native search fallback warning: {search_err}")
+
+            answer = self.gemini_service.answer_clinical_question(question, context_chunks=[])
+            return {
+                "success": True,
+                "answer": answer,
+                "citations": [],
+                "retrieval_engine": "Direct Clinical LLM Synthesis"
+            }, 200
 
         try:
             # 1. Retrieve

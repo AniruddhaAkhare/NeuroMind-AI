@@ -264,66 +264,121 @@ class ModelService:
     # PREDICT
     # ======================================================
 
+    def load_medical_image(self, image_input):
+        """
+        Universal medical image ingestor supporting:
+        - DICOM files (.dcm) via pydicom
+        - NIfTI 3D neuroimaging files (.nii, .nii.gz) via nibabel
+        - Standard image bytes and file paths (JPEG, PNG) via PIL
+        """
+        import io
+        import numpy as np
+        from PIL import Image
+
+        # 1. Byte stream inspection for DICOM or standard image
+        if isinstance(image_input, bytes):
+            # Check for DICOM magic header
+            if len(image_input) > 132 and image_input[128:132] == b"DICM":
+                try:
+                    import pydicom
+                    dcm = pydicom.dcmread(io.BytesIO(image_input))
+                    arr = dcm.pixel_array.astype(np.float32)
+                    arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-6) * 255.0
+                    return Image.fromarray(arr.astype(np.uint8)).convert("RGB")
+                except Exception as e:
+                    print(f"DICOM bytes parse fallback: {e}")
+            return Image.open(io.BytesIO(image_input)).convert("RGB")
+
+        # 2. String file path
+        elif isinstance(image_input, str):
+            path_lower = image_input.lower()
+            if path_lower.endswith(".dcm"):
+                try:
+                    import pydicom
+                    dcm = pydicom.dcmread(image_input)
+                    arr = dcm.pixel_array.astype(np.float32)
+                    arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-6) * 255.0
+                    return Image.fromarray(arr.astype(np.uint8)).convert("RGB")
+                except Exception as e:
+                    print(f"DICOM file path load fallback: {e}")
+            elif path_lower.endswith(".nii") or path_lower.endswith(".nii.gz"):
+                try:
+                    import nibabel as nib
+                    nii = nib.load(image_input)
+                    data = nii.get_fdata()
+                    # Extract central axial slice
+                    mid_slice = data[:, :, data.shape[2] // 2]
+                    mid_slice = (mid_slice - mid_slice.min()) / (mid_slice.max() - mid_slice.min() + 1e-6) * 255.0
+                    return Image.fromarray(mid_slice.astype(np.uint8)).convert("RGB")
+                except Exception as e:
+                    print(f"NIfTI file path load fallback: {e}")
+            return Image.open(image_input).convert("RGB")
+
+        # 3. Existing PIL Image or generic object
+        elif isinstance(image_input, Image.Image):
+            return image_input.convert("RGB")
+        else:
+            try:
+                return Image.open(image_input).convert("RGB")
+            except Exception:
+                return image_input
+
     def predict(self, image):
+        import numpy as np
+
+        # Normalize across DICOM, NIfTI, bytes, or PIL Image
+        image = self.load_medical_image(image)
 
         transform = self.get_transform()
-
-        image_tensor = transform(
-            image
-        )
-
-        input_tensor = image_tensor.unsqueeze(
-            0
-        ).to(self.device)
+        image_tensor = transform(image)
+        input_tensor = image_tensor.unsqueeze(0).to(self.device)
 
         with torch.no_grad():
+            outputs = self.model(input_tensor)
+            probabilities = torch.softmax(outputs, dim=1)[0]
 
-            outputs = self.model(
-                input_tensor
-            )
+        predicted_index = int(torch.argmax(probabilities).item())
+        predicted_class = self.class_names[predicted_index]
+        confidence = float(probabilities[predicted_index].item())
 
-            probabilities = torch.softmax(
-                outputs,
-                dim=1
-            )[0]
-
-        predicted_index = int(
-            torch.argmax(
-                probabilities
-            ).item()
-        )
-
-        predicted_class = (
-            self.class_names[
-                predicted_index
-            ]
-        )
-
-        confidence = float(
-            probabilities[
-                predicted_index
-            ].item()
-        )
-
+        probs_np = probabilities.cpu().numpy()
         class_probabilities = {
-
-            class_name: float(
-                probability
-            )
-
-            for class_name, probability
-            in zip(
-                self.class_names,
-                probabilities.cpu().numpy()
-            )
+            class_name: float(probability)
+            for class_name, probability in zip(self.class_names, probs_np)
         }
+
+        # Shannon Entropy & Clinical Uncertainty Quantification
+        # Normalized entropy across 4 classes: H in [0.0, 1.0]
+        entropy = float(-np.sum([p * np.log2(p + 1e-12) for p in probs_np]) / 2.0)
+        uncertainty_margin = round(float((1.0 - confidence) * 100), 2)
+
+        if confidence >= 0.85 and entropy < 0.35:
+            certainty_tier = "High Clinical Certainty"
+        elif confidence >= 0.65:
+            certainty_tier = "Moderate Clinical Certainty"
+        else:
+            certainty_tier = "Borderline / Clinical Review Recommended"
+
+        # Anatomical Brain Sanity Validation
+        img_np = np.array(image.convert("L"))
+        mean_val = float(np.mean(img_np))
+        std_val = float(np.std(img_np))
+        is_valid_brain = bool(std_val > 10.0 and 10.0 < mean_val < 245.0)
 
         return {
             "predicted_class": predicted_class,
             "predicted_index": predicted_index,
             "confidence": confidence,
-            "class_probabilities":
-                class_probabilities
+            "class_probabilities": class_probabilities,
+            "uncertainty_margin": uncertainty_margin,
+            "entropy_score": round(entropy, 4),
+            "clinical_certainty_tier": certainty_tier,
+            "anatomical_validation": {
+                "is_valid_brain_mri": is_valid_brain,
+                "mean_intensity": round(mean_val, 1),
+                "contrast_std": round(std_val, 1),
+                "scan_quality": "Optimal" if std_val > 25.0 else "Adequate",
+            }
         }
 
     # ======================================================

@@ -59,6 +59,7 @@ def mark_as_read(notification_id):
 # ============================================================
 
 @notification_bp.route("/alerts", methods=["GET"])
+@notification_bp.route("/notifications/emergency-alerts", methods=["GET"])
 @jwt_required()
 def get_alerts():
     current_user = get_current_user()

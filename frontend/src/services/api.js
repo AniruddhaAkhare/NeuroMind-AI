@@ -175,11 +175,16 @@ export const acknowledgeAlert = async (id) => (await api.put(`/alerts/${id}/ackn
 // ============================================================
 
 export const getHealthStatus = async () => (await api.get("/health")).data;
+export const fetchHistory = getPredictionHistory;
+export const fetchPredictionDetail = getPredictionById;
+export const fetchStats = getDashboardStats;
+
 export const getFileUrl = (filePath) => {
   if (!filePath) return null;
   if (filePath.startsWith("http://") || filePath.startsWith("https://")) return filePath;
   const backendBaseUrl = API_BASE_URL.replace(/\/api$/, "");
-  return `${backendBaseUrl}${filePath}`;
+  const normalizedPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
+  return `${backendBaseUrl}${normalizedPath}`;
 };
 
 export default api;

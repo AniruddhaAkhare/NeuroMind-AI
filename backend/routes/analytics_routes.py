@@ -51,19 +51,31 @@ def get_dashboard_analytics():
 
     # 4. Monthly Trend (last 6 months, for Line Chart)
     six_months_ago = datetime.utcnow() - timedelta(days=180)
-    monthly_trend_query = db.session.query(
-        func.date_trunc('month', PredictionHistory.created_at).label('month'),
-        func.count(PredictionHistory.id).label('count')
-    ).filter(
-        PredictionHistory.created_at >= six_months_ago
-    ).group_by('month').order_by('month').all()
-
-    monthly_trend = [
-        {
-            "month": month.strftime("%Y-%m") if month else "Unknown", 
-            "predictions": count
-        } for month, count in monthly_trend_query
-    ]
+    try:
+        if db.engine.name == 'sqlite':
+            monthly_trend_query = db.session.query(
+                func.strftime('%Y-%m', PredictionHistory.created_at).label('month'),
+                func.count(PredictionHistory.id).label('count')
+            ).filter(
+                PredictionHistory.created_at >= six_months_ago
+            ).group_by('month').order_by('month').all()
+            monthly_trend = [
+                {"month": str(month) if month else "Unknown", "predictions": count}
+                for month, count in monthly_trend_query
+            ]
+        else:
+            monthly_trend_query = db.session.query(
+                func.date_trunc('month', PredictionHistory.created_at).label('month'),
+                func.count(PredictionHistory.id).label('count')
+            ).filter(
+                PredictionHistory.created_at >= six_months_ago
+            ).group_by('month').order_by('month').all()
+            monthly_trend = [
+                {"month": month.strftime("%Y-%m") if hasattr(month, "strftime") else str(month), "predictions": count}
+                for month, count in monthly_trend_query
+            ]
+    except Exception:
+        monthly_trend = []
 
     # 5. Gender Demographics
     gender_counts = db.session.query(

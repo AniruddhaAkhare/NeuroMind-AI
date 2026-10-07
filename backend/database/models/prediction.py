@@ -80,6 +80,10 @@ class PredictionHistory(db.Model):
     )
 
     def to_dict(self):
+        report_data = self.report.to_dict() if self.report else None
+        xai_data = self.xai_result.to_dict() if self.xai_result else None
+        peak_coords = xai_data.get("peak_coordinates") if xai_data else None
+
         return {
             "id": self.id,
             "patient_id": self.patient_id,
@@ -99,7 +103,12 @@ class PredictionHistory(db.Model):
             "is_emergency": self.is_emergency,
             "image_path": self.image_path,
             "gradcam_path": self.gradcam_path,
+            "raw_heatmap_path": self.xai_result.heatmap_path if self.xai_result else None,
             "gradcam_available": bool(self.gradcam_path),
+            "xai_result": xai_data,
+            "peak_coordinates": peak_coords,
+            "clinical_dossier": report_data.get("clinical_dossier") if report_data else None,
+            "report": report_data,
             "model_name": self.model_name,
             "model_version": self.model_version,
             "scan_type": self.scan_type,
@@ -136,7 +145,7 @@ class XAIResult(db.Model):
 
     overlay_path = db.Column(db.String(512), nullable=True)
 
-    # Per-region importance — stored as JSON array of dicts
+    # Per-region importance — stored as JSON array of dicts or dict with peak_coordinates
     region_importance = db.Column(db.JSON, nullable=True)
 
     cam_max_value = db.Column(db.Float, nullable=True)
@@ -151,6 +160,12 @@ class XAIResult(db.Model):
     prediction = db.relationship("PredictionHistory", back_populates="xai_result")
 
     def to_dict(self):
+        regions = self.region_importance
+        peak_coords = None
+        if isinstance(regions, dict):
+            peak_coords = regions.get("peak_coordinates")
+            regions = regions.get("regions", [])
+
         return {
             "id": self.id,
             "prediction_id": self.prediction_id,
@@ -160,7 +175,8 @@ class XAIResult(db.Model):
             "target_class_index": self.target_class_index,
             "heatmap_path": self.heatmap_path,
             "overlay_path": self.overlay_path,
-            "region_importance": self.region_importance,
+            "region_importance": regions,
+            "peak_coordinates": peak_coords,
             "cam_max_value": self.cam_max_value,
             "cam_mean_value": self.cam_mean_value,
             "generated_at": (

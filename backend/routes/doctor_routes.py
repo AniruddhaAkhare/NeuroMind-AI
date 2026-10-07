@@ -68,6 +68,20 @@ def search_hospitals():
         "hospitals": results
     }), 200
 
+
+@doctor_bp.route("/hospitals/<int:hospital_id>", methods=["GET"])
+@jwt_required()
+def get_hospital(hospital_id):
+    h = Hospital.query.get(hospital_id)
+    if not h:
+        return jsonify({"success": False, "error": "Hospital not found"}), 404
+    data = h.to_dict()
+    data["doctor_count"] = len(h.doctor_affiliations)
+    return jsonify({
+        "success": True,
+        "hospital": data
+    }), 200
+
 # ============================================================
 # LIST DOCTORS (By Specialization / Hospital)
 # ============================================================

@@ -73,6 +73,7 @@ class User(db.Model):
     patient_profile = db.relationship(
         "Patient",
         back_populates="user",
+        foreign_keys="Patient.user_id",
         uselist=False,
         cascade="all, delete-orphan",
     )

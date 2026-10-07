@@ -26,11 +26,11 @@ load_dotenv(BASE_DIR / ".env")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL is not configured.\n"
-        "Create backend/.env and add:\n"
-        "DATABASE_URL=postgresql://username:password@localhost:5432/neuromind_ai"
-    )
+    DATABASE_URL = f"sqlite:///{BASE_DIR / 'alzheimer_ai.db'}"
+elif DATABASE_URL.startswith("sqlite:///") and not DATABASE_URL.startswith("sqlite:////") and not (len(DATABASE_URL) > 11 and DATABASE_URL[10] == ":"):
+    # Normalize relative sqlite path to BASE_DIR
+    rel_path = DATABASE_URL.replace("sqlite:///", "")
+    DATABASE_URL = f"sqlite:///{BASE_DIR / rel_path}"
 
 
 # ============================================================
@@ -88,9 +88,16 @@ RAG_INDEX_FOLDER.mkdir(parents=True, exist_ok=True)
 # ALLOWED EXTENSIONS
 # ============================================================
 
-ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "dcm"}
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "dcm", "nii", "nii.gz"}
 
-ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "application/dicom"}
+ALLOWED_IMAGE_MIMES = {
+    "image/jpeg",
+    "image/png",
+    "application/dicom",
+    "application/octet-stream",
+    "application/gzip",
+    "application/x-gzip",
+}
 
 ALLOWED_DOCUMENT_EXTENSIONS = {"pdf", "docx", "txt"}
 
@@ -132,10 +139,14 @@ class Config:
     # Database
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = (
+        {"connect_args": {"check_same_thread": False}}
+        if str(DATABASE_URL).startswith("sqlite")
+        else {
+            "pool_pre_ping": True,
+            "pool_recycle": 300,
+        }
+    )
 
     # JWT
     JWT_SECRET_KEY = JWT_SECRET_KEY

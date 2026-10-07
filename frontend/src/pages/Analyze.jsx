@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, ArrowRight, FileImage, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, ArrowRight, FileImage, Loader2, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { predictMRI } from '../services/api';
 import Disclaimer from '../components/Disclaimer';
+import BrainScanLoader from '../components/BrainScanLoader';
+import { playScanCompleteChime } from '../utils/audioFeedback';
 
 export default function Analyze() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -10,6 +12,27 @@ export default function Analyze() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const pendingResultRef = useRef(null);
+  const scanCycleDoneRef = useRef(false);
+
+  const checkTransition = () => {
+    if (scanCycleDoneRef.current && pendingResultRef.current) {
+      const { success, predId, error: errText } = pendingResultRef.current;
+      setLoading(false);
+      if (success && predId) {
+        playScanCompleteChime();
+        navigate(`/result/${predId}`);
+      } else if (errText) {
+        setError(errText);
+      }
+    }
+  };
+
+  const handleScanComplete = () => {
+    scanCycleDoneRef.current = true;
+    checkTransition();
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -41,105 +64,132 @@ export default function Analyze() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
-      setError('Please select or drop an MRI scan image first.');
+      setError('Please select or drop an axial MRI scan image first.');
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      const data = await predictMRI(selectedFile);
-      if (data.success && data.prediction_id) {
-        navigate(`/result/${data.prediction_id}`);
-      } else {
-        setError(data.error || 'Failed to process MRI scan.');
-      }
+      scanCycleDoneRef.current = false;
+      pendingResultRef.current = null;
+
+      // Execute API inference call concurrently with video scan cycle
+      predictMRI(selectedFile)
+        .then((data) => {
+          const predId = data.prediction_id || data.prediction?.id;
+          if (data.success && predId) {
+            pendingResultRef.current = { success: true, predId };
+          } else {
+            pendingResultRef.current = { error: data.error || 'Failed to process MRI scan.' };
+          }
+          checkTransition();
+        })
+        .catch((err) => {
+          pendingResultRef.current = {
+            error: err.response?.data?.error || err.message || 'Error communicating with backend service.'
+          };
+          checkTransition();
+        });
+
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Error communicating with backend service.');
-    } finally {
       setLoading(false);
+      setError(err.message || 'Error initiating scan analysis.');
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Upload MRI Brain Scan</h1>
-        <p className="text-sm text-slate-400">
-          Upload an axial brain MRI scan (JPEG/PNG) to evaluate Alzheimer’s cognitive stage.
+    <div className="max-w-4xl mx-auto space-y-8 pb-16">
+      {/* Top Banner */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+            <Sparkles className="w-4 h-4 text-blue-600" />
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Axial Brain MRI Diagnostic Analysis
+          </h1>
+        </div>
+        <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
+          Upload a high-resolution axial brain MRI scan to evaluate cognitive status across 4 dementia stages via EfficientNet-B3, generate genuine Grad-CAM interpretability heatmaps, 3D stereotactic neural reconstructions, and comprehensive 6-pillar clinical dossiers.
         </p>
       </div>
 
       <Disclaimer />
 
+      {/* Upload Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+          className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all bg-white ${
             previewUrl
-              ? 'border-cyan-500/50 bg-slate-900/90'
-              : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
+              ? 'border-blue-500 bg-blue-50/20 shadow-sm'
+              : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50/60 shadow-xs'
           }`}
         >
           {previewUrl ? (
-            <div className="space-y-4">
-              <div className="relative max-w-xs mx-auto aspect-square rounded-xl overflow-hidden border border-slate-700 bg-black">
-                <img src={previewUrl} alt="MRI Preview" className="w-full h-full object-cover" />
+            <div className="space-y-5">
+              <div className="relative max-w-xs mx-auto aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-950 flex items-center justify-center">
+                <img src={previewUrl} alt="MRI Preview" className="w-full h-full object-contain" />
               </div>
-              <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
-                <FileImage className="w-4 h-4 text-cyan-400" />
-                <span className="font-medium truncate max-w-xs">{selectedFile.name}</span>
-                <span className="text-slate-400">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-700 font-semibold">
+                <FileImage className="w-4 h-4 text-blue-600" />
+                <span className="truncate max-w-xs">{selectedFile.name}</span>
+                <span className="text-slate-400 font-mono">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
               </div>
-              <label className="inline-block cursor-pointer text-xs font-semibold text-cyan-400 hover:underline">
-                Choose a different file
-                <input type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleFileChange} className="hidden" />
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                <span>Select a different scan</span>
+                <input type="file" accept=".jpg,.jpeg,.png,.dcm,.nii,.nii.gz" onChange={handleFileChange} className="hidden" />
               </label>
             </div>
           ) : (
             <label className="cursor-pointer block space-y-4">
-              <div className="p-4 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 w-fit mx-auto">
+              <div className="p-4 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 w-fit mx-auto shadow-xs">
                 <Upload className="w-8 h-8" />
               </div>
               <div>
-                <p className="text-base font-semibold text-white">
-                  Click to upload or drag & drop MRI image
+                <p className="text-base font-bold text-slate-900">
+                  Click to browse or drag & drop brain MRI scan
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Supports JPEG, JPG, PNG (Max 10MB)
+                  Supported formats: JPEG, PNG, DICOM (.dcm), NIfTI (.nii, .nii.gz) (max 10MB)
                 </p>
               </div>
-              <input type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleFileChange} className="hidden" />
+              <input type="file" accept=".jpg,.jpeg,.png,.dcm,.nii,.nii.gz" onChange={handleFileChange} className="hidden" />
             </label>
           )}
         </div>
 
         {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading || !selectedFile}
-          className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
+          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-600/25"
         >
           {loading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Processing EfficientNet-B3 & Grad-CAM...</span>
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <span>Analyzing MRI with EfficientNet-B3, Grad-CAM & Three.js...</span>
             </>
           ) : (
             <>
-              <span>Run Deep Learning Diagnosis</span>
-              <ArrowRight className="w-5 h-5" />
+              <span>Execute Diagnostic Evaluation & Neural Modeling</span>
+              <ArrowRight className="w-4 h-4" />
             </>
           )}
         </button>
       </form>
+
+      {/* Accelerated 3D Brain Scan Loading Modal with Smooth Cycle Completion */}
+      <BrainScanLoader active={loading} onComplete={handleScanComplete} />
     </div>
   );
 }

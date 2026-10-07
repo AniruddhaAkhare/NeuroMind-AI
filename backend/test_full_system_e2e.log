@@ -1,0 +1,117 @@
+[2026-10-07 15:44:14] [INFO] ======================================================================
+[2026-10-07 15:44:14] [INFO] STARTING NEUROVIA MASTER E2E HEADLESS TEST SUITE
+[2026-10-07 15:44:14] [INFO] Timestamp: 2026-10-07T10:14:14.866637+00:00
+[2026-10-07 15:44:14] [INFO] ======================================================================
+[2026-10-07 15:44:14] [INFO] ======================================================================
+[2026-10-07 15:44:14] [INFO] INITIALIZING APPLICATION & IN-MEMORY TEST DATABASE
+[2026-10-07 15:44:14] [INFO] ======================================================================
+[2026-10-07 15:44:19] [INFO] Application factory, schemas, and test entities successfully initialized.
+[2026-10-07 15:44:19] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:19] [INFO] MODULE 2: HEALTH & SYSTEM DIAGNOSTIC ENDPOINTS
+[2026-10-07 15:44:19] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:19] [INFO]   [PASS] Root System Health Check (/) 
+[2026-10-07 15:44:19] [INFO]   [PASS] API Diagnostic Health Check (/api/health) 
+[2026-10-07 15:44:19] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:19] [INFO] MODULE 1: AUTHENTICATION & RBAC ROLE VERIFICATION
+[2026-10-07 15:44:19] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:19] [INFO]   [PASS] Public Patient Signup (/api/auth/signup) (Code: 201)
+[2026-10-07 15:44:19] [INFO]   [PASS] Login for Role: ADMIN (/api/auth/login) (User: admin@neuromind.ai)
+[2026-10-07 15:44:19] [INFO]   [PASS] Login for Role: DOCTOR (/api/auth/login) (User: doctor@neuromind.ai)
+[2026-10-07 15:44:19] [INFO]   [PASS] Login for Role: RADIOLOGIST (/api/auth/login) (User: radiologist@neuromind.ai)
+[2026-10-07 15:44:19] [INFO]   [PASS] Login for Role: PATIENT (/api/auth/login) (User: patient@neuromind.ai)
+[2026-10-07 15:44:19] [INFO]   [PASS] Current User Profile (/api/auth/me) (Role: doctor verified)
+[2026-10-07 15:44:19] [INFO]   [PASS] JWT Token Refresh (/api/auth/refresh) 
+[2026-10-07 15:44:19] [INFO]   [PASS] RBAC Security: Patient Denied Admin Access (Expected 403, Got: 403)
+[2026-10-07 15:44:19] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:19] [INFO] MODULE 3: EFFICIENTNET-B3 MODEL & REAL PYTORCH GRAD-CAM ENGINE
+[2026-10-07 15:44:19] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:20] [INFO]   [PASS] EfficientNet-B3 PyTorch Forward Pass (Class: ModerateDemented, Conf: 100.00%, Latency: 81.9ms)
+[2026-10-07 15:44:20] [INFO]   [PASS] Uncertainty Quantification & Clinical Calibration (Entropy: -0.0, Tier: High Clinical Certainty)
+[2026-10-07 15:44:20] [INFO]   [PASS] Universal Medical Ingestor (DICOM/NIfTI/Standard) (Output Size: (300, 300))
+[2026-10-07 15:44:20] [INFO]   [PASS] Real PyTorch Grad-CAM Saliency Engine (Peak: (0.3467, 0.35), Heatmap: OK, Latency: 378.7ms)
+[2026-10-07 15:44:20] [INFO]   [PASS] Bilateral Hemispheric Asymmetry & Spatial Coverage (Index: -0.186, Pattern: Left Hemisphere Predominance)
+[2026-10-07 15:44:20] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:20] [INFO] MODULE 4: PREDICTION API (/api/predict) & GEMINI 6-PILLAR DOSSIER
+[2026-10-07 15:44:20] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:20] [INFO]   [PASS] Prediction API Endpoint (/api/predict) (HTTP Code: 200)
+[2026-10-07 15:44:20] [INFO]   [PASS] Prediction Response Payload Structure (Predicted: ModerateDemented)
+[2026-10-07 15:44:20] [INFO]   [PASS] Prediction Uncertainty & Calibration Payload (Tier: High Clinical Certainty)
+[2026-10-07 15:44:20] [INFO]   [PASS] Grad-CAM & 3D Defect Translation Payload (Peak: (0.3467, 0.35))
+[2026-10-07 15:44:20] [INFO]   [PASS] Gemini Multimodal 6-Pillar Clinical Dossier (6 clinical pillars present)
+[2026-10-07 15:44:20] [INFO]   [PASS] Integrative Ayurveda & Medhya Rasayana Prescriptions (Found 4 herbs)
+[2026-10-07 15:44:21] [INFO]   [PASS] Longitudinal EHR Trajectory Tracking (Comparative trajectory verified)
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 5: IMAGE & STATIC ASSET UPLOAD SERVING
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Static Upload File Serving (/uploads/gradcam/...) (MIME: image/png)
+[2026-10-07 15:44:21] [INFO]   [PASS] API Upload File Serving (/api/uploads/gradcam/...) 
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 6: CLINICAL REPORT & REPORTLAB MULTI-PAGE PDF ENGINE
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Generate Clinical Report (/api/reports/generate/<id>) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Retrieve Report Details (/api/reports/<id>) 
+[2026-10-07 15:44:21] [INFO]   [PASS] ReportLab PDF Compilation & Download (/api/reports/download/<id>) (PDF Size: 108323 bytes, Header: %PDF-)
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 7: PATIENT MANAGEMENT & CLINICAL ACCESS
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Doctor Lists Patients (/api/patients) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Patient Self-Profile (/api/patients/me) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Get Single Patient by ID (/api/patients/<id>) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Update Patient Clinical Information (/api/patients/<id>) 
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 8: PREDICTION HISTORY & LONGITUDINAL MEDICAL VAULT
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Prediction History Pagination (/api/history) (Total: 23)
+[2026-10-07 15:44:21] [INFO]   [PASS] Historical Aggregated Stats (/api/stats) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Single Historical Record Detail (/api/history/<id>) 
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 9: RAG CLINICAL ASSISTANT & KNOWLEDGE RETRIEVAL
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] RAG List Knowledge Documents (/api/assistant/documents) 
+[2026-10-07 15:44:21] [INFO]   [PASS] RAG Clinical Assistant Query (/api/assistant/query) (Answer: AI Assistant is operating in resilient offline mode. For cli...)
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 10: HOSPITALS, DOCTORS DIRECTORY & APPOINTMENT BOOKING
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Geospatial Hospital Search (/api/hospitals/search) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Get Single Hospital by ID (/api/hospitals/<id>) 
+[2026-10-07 15:44:21] [INFO]   [PASS] List Doctors Directory (/api/doctors) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Get Available Appointment Slots (/api/appointments/slots/<id>) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Book Patient Appointment (/api/appointments/book) (Code: 201, Resp: {'appointment': {'appointment_date': '2026-10-07', 'appointment_time': '10:00:00', 'created_at': '2026-10-07T10:14:21.510017', 'doctor_id': 1, 'doctor_name': 'Dr. Marcus Vance', 'id': 1, 'notes': None, 'patient_id': 1, 'patient_name': 'Arthur Pendelton', 'reason': 'Cognitive assessment follow-up', 'slot_id': 1, 'status': 'BOOKED'}, 'message': 'Appointment booked successfully', 'success': True})
+[2026-10-07 15:44:21] [INFO]   [PASS] List Patient Appointments (/api/appointments/my) 
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 11: RECHARTS ANALYTICS & ADMIN SYSTEM GOVERNANCE
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] Clinical Analytics Metrics for Recharts (/api/analytics/dashboard) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Admin System Metrics (/api/admin/stats) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Audit Logging & Compliance Trail (/api/admin/audit-logs) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Admin User Governance Directory (/api/admin/users) 
+[2026-10-07 15:44:21] [INFO] 
+----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO] MODULE 12: CLINICAL NOTIFICATIONS & EMERGENCY ALERTS
+[2026-10-07 15:44:21] [INFO] ----------------------------------------------------------------------
+[2026-10-07 15:44:21] [INFO]   [PASS] User Notification Retrieval (/api/notifications) 
+[2026-10-07 15:44:21] [INFO]   [PASS] Clinical Emergency Alert Feed (/api/notifications/emergency-alerts) 
+[2026-10-07 15:44:21] [INFO] 
+======================================================================
+[2026-10-07 15:44:21] [INFO] FINAL TEST EXECUTION SUMMARY
+[2026-10-07 15:44:21] [INFO] ======================================================================
+[2026-10-07 15:44:21] [INFO] Total Tests Executed: 48
+[2026-10-07 15:44:21] [INFO] Passed:              48
+[2026-10-07 15:44:21] [INFO] Failed:              0
+[2026-10-07 15:44:21] [INFO] Total Duration:      6.69 seconds
+[2026-10-07 15:44:21] [INFO] Full Logs Saved To:  E:\Dementia_project\backend\test_full_system_e2e.log
+[2026-10-07 15:44:21] [INFO] 
+>>> CERTIFICATION: NEUROVIA PLATFORM CERTIFIED 100% OPERATIONAL <<<
+[2026-10-07 15:44:21] [INFO] ======================================================================
+

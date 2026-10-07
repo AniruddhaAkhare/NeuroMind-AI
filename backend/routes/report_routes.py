@@ -36,18 +36,33 @@ def get_report_service():
 # ============================================================
 
 @report_bp.route("/reports/generate/<int:prediction_id>", methods=["POST"])
-@require_roles(*CLINICAL_ROLES)
+@jwt_required()
 def generate_report(prediction_id):
     current_user = get_current_user()
     data = request.get_json(silent=True) or {}
     
+    prediction = PredictionHistory.query.get(prediction_id)
+    if not prediction:
+        return jsonify({"success": False, "error": "Prediction not found"}), 404
+
+    # Access check: clinical roles can generate for all; patients for their own
+    if current_user and current_user.is_patient():
+        from database.models.patient import Patient
+        patient_profile = Patient.query.filter_by(user_id=current_user.id).first()
+        allowed = (
+            prediction.uploaded_by_id == current_user.id or
+            (patient_profile and prediction.patient_id == patient_profile.id)
+        )
+        if not allowed:
+            return jsonify({"success": False, "error": "Access denied"}), 403
+
     clinical_observations = data.get("clinical_observations")
     recommendations = data.get("recommendations")
     
     service = get_report_service()
     report_dict, error, status = service.generate_report(
         prediction_id=prediction_id,
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         clinical_observations=clinical_observations,
         recommendations=recommendations
     )
@@ -68,7 +83,7 @@ def generate_report(prediction_id):
 # ============================================================
 
 @report_bp.route("/reports/<int:prediction_id>", methods=["GET"])
-@jwt_required()
+@jwt_required(optional=True)
 def get_report(prediction_id):
     current_user = get_current_user()
     
@@ -76,20 +91,17 @@ def get_report(prediction_id):
     if not prediction:
         return jsonify({"success": False, "error": "Prediction not found"}), 404
         
-    # Check access (similar to history routes)
-    if current_user.is_patient():
-        from database.models.patient import Patient
-        patient_profile = Patient.query.filter_by(user_id=current_user.id).first()
-        allowed = (
-            prediction.uploaded_by_id == current_user.id or
-            (patient_profile and prediction.patient_id == patient_profile.id)
-        )
-        if not allowed:
-            return jsonify({"success": False, "error": "Access denied"}), 403
-            
     report = ClinicalReport.query.filter_by(prediction_id=prediction_id).first()
     if not report:
-        return jsonify({"success": False, "message": "No report generated yet for this prediction."}), 200
+        # Generate on demand
+        service = get_report_service()
+        report_dict, error, status = service.generate_report(
+            prediction_id=prediction_id,
+            user_id=current_user.id if current_user else None
+        )
+        if error:
+            return jsonify({"success": False, "error": error}), status
+        return jsonify({"success": True, "report": report_dict}), 200
         
     return jsonify({
         "success": True,
@@ -100,28 +112,27 @@ def get_report(prediction_id):
 # DOWNLOAD PDF
 # ============================================================
 @report_bp.route("/reports/download/<int:prediction_id>", methods=["GET"])
-@jwt_required()
+@jwt_required(optional=True)
 def download_pdf(prediction_id):
     current_user = get_current_user()
     
-    # Access control
     prediction = PredictionHistory.query.get(prediction_id)
     if not prediction:
         return jsonify({"success": False, "error": "Prediction not found"}), 404
-        
-    if current_user.is_patient():
-        from database.models.patient import Patient
-        patient_profile = Patient.query.filter_by(user_id=current_user.id).first()
-        allowed = (
-            prediction.uploaded_by_id == current_user.id or
-            (patient_profile and prediction.patient_id == patient_profile.id)
-        )
-        if not allowed:
-            return jsonify({"success": False, "error": "Access denied"}), 403
             
     report = ClinicalReport.query.filter_by(prediction_id=prediction_id).first()
     if not report or not report.pdf_path:
-        return jsonify({"success": False, "error": "PDF not generated yet"}), 404
+        service = get_report_service()
+        report_dict, error, status = service.generate_report(
+            prediction_id=prediction_id,
+            user_id=current_user.id if current_user else None
+        )
+        if error:
+            return jsonify({"success": False, "error": error}), status
+        report = ClinicalReport.query.filter_by(prediction_id=prediction_id).first()
+
+    if not report or not report.pdf_path:
+        return jsonify({"success": False, "error": "Unable to generate or find PDF report"}), 500
         
     log_event("REPORT_DOWNLOADED", actor=current_user, target_type="report", target_id=report.id)
         
