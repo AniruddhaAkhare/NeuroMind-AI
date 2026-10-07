@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Brain, ArrowRight, ArrowUpRight, ChevronRight, ChevronLeft, 
@@ -20,6 +20,20 @@ export default function LandingPage() {
   const [selectedPillar, setSelectedPillar] = useState(null);
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [workstationTab, setWorkstationTab] = useState('Analysis');
+  const bgVideoRef = useRef(null);
+
+  useEffect(() => {
+    if (bgVideoRef.current) {
+      bgVideoRef.current.muted = true;
+      bgVideoRef.current.defaultMuted = true;
+      const playPromise = bgVideoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn("Background video autoplay blocked:", err);
+        });
+      }
+    }
+  }, []);
 
   // Case profiles for the 1/3 Grad-CAM carousel
   const carouselCases = [
@@ -146,19 +160,25 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-500/20 selection:text-blue-900 font-sans antialiased relative overflow-hidden">
       
       {/* ============================================================
-          AMBIENT BACKGROUND (LIGHT MODE GRID + SUBTLE NEURAL MESH)
+          AMBIENT BACKGROUND VIDEO (VIBRANT PULSING SYNAPSE ACTIVITY)
       ============================================================ */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-25">
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Continuous Smooth Background Video (Vibrant Neural Synapse Activity) */}
         <video
+          ref={bgVideoRef}
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover scale-[1.05] filter contrast-125"
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover scale-[1.05] opacity-70 filter brightness-105 contrast-115"
           src="/videos/neurons_pulsing_bg.mp4"
         />
+
+        {/* Soft atmospheric overlay that keeps foreground typography crisp while letting the pulsing neurons shine through */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-white/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-white/10 to-slate-100/50 pointer-events-none" />
       </div>
-      <div className="fixed inset-0 bg-gradient-to-b from-white/95 via-slate-50/90 to-slate-100/95 pointer-events-none z-0" />
 
       {/* ============================================================
           TOP NAVIGATION BAR (CLEAN LIGHT GLASS NAVBAR)
