@@ -17,6 +17,7 @@ import {
   Compass,
   Play,
   Pause,
+  Zap,
 } from "lucide-react";
 
 export default function ThreeBrainViewer({
@@ -33,31 +34,28 @@ export default function ThreeBrainViewer({
   const rendererRef = useRef(null);
   const animFrameIdRef = useRef(null);
 
-  // Mesh refs for dynamic toggles
-  const skinGroupRef = useRef(null);
-  const cageGroupRef = useRef(null);
-  const nervesGroupRef = useRef(null);
-  const hotspotGroupRef = useRef(null);
-  const nervesParticlesRef = useRef([]);
+  // Group references
+  const masterGroupRef = useRef(null);
+  const particlesGroupRef = useRef(null);
+  const fibersGroupRef = useRef(null);
+  const defectGroupRef = useRef(null);
+  const orbitsGroupRef = useRef(null);
 
-  // UI state
+  // Dynamic state
   const [activePreset, setActivePreset] = useState("isometric");
-  const [showSkin, setShowSkin] = useState(true);
-  const [skinOpacity, setSkinOpacity] = useState(0.38);
-  const [showCage, setShowCage] = useState(true);
-  const [showNerves, setShowNerves] = useState(true);
-  const [showHotspot, setShowHotspot] = useState(true);
+  const [showFibers, setShowFibers] = useState(true);
+  const [showParticles, setShowParticles] = useState(true);
+  const [showDefectCore, setShowDefectCore] = useState(true);
+  const [showOrbits, setShowOrbits] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [slicePlane, setSlicePlane] = useState(100); // 0 to 100% slice height
+  const [glowIntensity, setGlowIntensity] = useState(1.0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedCallout, setSelectedCallout] = useState("pathology"); // 'pathology' | 'saliency' | 'anatomy'
+  const [selectedCallout, setSelectedCallout] = useState("pathology");
 
-  // Map 2D peak coordinate from Grad-CAM to 3D brain space
+  // Calculate 3D Defect Coordinate dynamically from real-time Grad-CAM peak
   const defect3DPosition = useMemo(() => {
-    // Standard axial brain MRI maps (x, y) in [0, 1]:
-    // x: 0 = patient right, 1 = patient left
-    // y: 0 = anterior (frontal), 1 = posterior (occipital)
-    let nx = 0.65; // default to temporal lobe
+    // 2D Peak coordinate (nx, ny) from Grad-CAM in [0, 1]
+    let nx = 0.65;
     let ny = 0.55;
 
     if (peakCoordinates && typeof peakCoordinates.x === "number") {
@@ -65,433 +63,526 @@ export default function ThreeBrainViewer({
       ny = peakCoordinates.y;
     }
 
-    // Convert normalized [0, 1] to 3D coordinates [-1.8, 1.8]
-    // In Three.js: X = Lateral (Right/Left), Y = Superior/Inferior, Z = Anterior/Posterior
-    const x3d = (nx - 0.5) * 3.2;
-    // Map axial Y (anterior-to-posterior) to Three.js -Z / +Z
-    const z3d = (ny - 0.5) * 3.4;
-    // Axial slice level typically around z-plane middle / slightly inferior for temporal lobe
-    const y3d = -0.2 - Math.abs(x3d) * 0.15;
+    // Map to anatomical 3D brain dimensions:
+    // X: Lateral axis (Left +X, Right -X)
+    // Y: Superior/Inferior axis (+Y superior, -Y inferior/temporal)
+    // Z: Anterior/Posterior axis (+Z anterior/frontal, -Z posterior/occipital)
+    const x3d = (nx - 0.5) * 2.8;
+    const z3d = -(ny - 0.5) * 3.0; // Inverted so anterior is forward
+    // Temporal lobe drops down laterally:
+    const y3d = -0.25 + (1.0 - Math.abs(nx - 0.5) * 2.0) * 0.4;
 
     return new THREE.Vector3(x3d, y3d, z3d);
   }, [peakCoordinates]);
 
-  // Determine Primary Atrophy Region and Pathological Explanation based on prediction & coordinates
+  // Determine pathology metadata
   const defectMetadata = useMemo(() => {
     const isNormal = predictedClass === "NonDemented";
     const isVeryMild = predictedClass === "VeryMildDemented";
     const isMild = predictedClass === "MildDemented";
     const isModerate = predictedClass === "ModerateDemented";
 
-    let regionName = "Bilateral Medial Temporal Lobe & Hippocampus";
-    if (defect3DPosition.x < -0.4) {
-      regionName = "Right Medial Temporal Lobe (CA1/Subiculum)";
-    } else if (defect3DPosition.x > 0.4) {
-      regionName = "Left Medial Temporal Lobe (CA1/Subiculum)";
-    } else if (defect3DPosition.z < -0.5) {
-      regionName = "Anterior Frontal Cortex & Cingulate Gyrus";
-    } else if (defect3DPosition.z > 0.5) {
+    let regionName = "Left Medial Temporal Lobe & Hippocampus";
+    if (defect3DPosition.x < -0.3) {
+      regionName = "Right Medial Temporal Lobe & Hippocampus";
+    } else if (defect3DPosition.x > 0.3) {
+      regionName = "Left Medial Temporal Lobe & Hippocampus";
+    } else if (defect3DPosition.z > 0.4) {
+      regionName = "Prefrontal Cortex & Anterior Cingulate";
+    } else if (defect3DPosition.z < -0.4) {
       regionName = "Posterior Cingulate & Precuneus";
     }
 
     let saliencyPct = 88.4;
     if (regionImportance && Array.isArray(regionImportance) && regionImportance.length > 0) {
-      saliencyPct = regionImportance[0].percentage || (regionImportance[0].importance * 100) || 88.4;
+      saliencyPct = regionImportance[0].percentage || regionImportance[0].importance * 100 || 88.4;
     }
-
-    let reasoning = "";
-    if (isNormal) {
-      reasoning =
-        "The model detected physiological cortical thickness and preserved hippocampal volumes. Signal intensities throughout neural tracts reflect normal synaptic integrity without focal neurofibrillary burden.";
-    } else if (isVeryMild) {
-      reasoning =
-        "The EfficientNet-B3 model isolated localized micro-atrophy along the entorhinal-hippocampal boundary. This early volume loss is the primary neural driver for amnestic mild cognitive decline and episodic memory retrieval lag.";
-    } else if (isMild) {
-      reasoning =
-        "High gradient activations concentrate in the medial temporal horns and parahippocampal gyrus. Structural atrophy here interrupts cholinergic synaptic transmission, accelerating short-term consolidation deficits and subtle visuospatial disorientation.";
-    } else {
-      reasoning =
-        "Pronounced bilateral temporal lobe hypointensity, marked lateral ventricular widening, and posterior cingulate volume loss. These prominent neuroanatomical degenerations drove the model's Moderate Dementia classification with high certainty.";
-    }
-
-    let hotspotColor = isNormal ? 0x10b981 : (isModerate ? 0xef4444 : (isMild ? 0xf59e0b : 0x3b82f6));
 
     return {
       regionName,
-      saliencyPct,
-      reasoning,
-      hotspotColor,
+      saliencyPct: Number(saliencyPct).toFixed(1),
       isNormal,
+      severity: isModerate ? "Severe" : isMild ? "Moderate" : isVeryMild ? "Early Stage" : "Intact",
     };
-  }, [predictedClass, defect3DPosition, regionImportance]);
+  }, [defect3DPosition, predictedClass, regionImportance]);
 
-  // Main Three.js Scene Setup & Animation Loop
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
-    // 1. Scene & Clean Light-Theme Background
+    // 1. Scene & Deep Midnight Space Background (matches reference image)
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc); // Hospital pearl-slate #F8FAFC
+    scene.background = new THREE.Color(0x030712);
+    scene.fog = new THREE.FogExp2(0x030712, 0.04);
     sceneRef.current = scene;
 
-    // Subtle atmospheric fog for clinical depth
-    scene.fog = new THREE.FogExp2(0xf8fafc, 0.045);
-
-    // 2. Camera
+    // 2. Camera setup
     const width = container.clientWidth;
     const height = container.clientHeight;
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(4.5, 3.2, 5.0);
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+    camera.position.set(4.2, 2.0, 5.0);
     cameraRef.current = camera;
 
-    // 3. Renderer with antialiasing
+    // 3. Renderer with high dynamic range tone mapping
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.35;
+    container.innerHTML = "";
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 4. Controls
+    // 4. OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxDistance = 12;
-    controls.minDistance = 2.2;
+    controls.minDistance = 2.0;
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
-    // 5. Lighting Setup (Medical Studio Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    // 5. Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0x0a192f, 1.2);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.6);
-    hemiLight.position.set(0, 10, 0);
-    scene.add(hemiLight);
+    const cyanKeyLight = new THREE.DirectionalLight(0x00f0ff, 2.5);
+    cyanKeyLight.position.set(5, 6, 4);
+    scene.add(cyanKeyLight);
 
-    const keyLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
-    keyLight.position.set(6, 8, 6);
-    scene.add(keyLight);
+    const blueFillLight = new THREE.DirectionalLight(0x0066ff, 2.0);
+    blueFillLight.position.set(-6, -2, -4);
+    scene.add(blueFillLight);
 
-    const fillLight = new THREE.DirectionalLight(0x818cf8, 0.8);
-    fillLight.position.set(-6, -2, -5);
-    scene.add(fillLight);
+    const purpleRimLight = new THREE.DirectionalLight(0x8a2be2, 1.5);
+    purpleRimLight.position.set(0, 8, -6);
+    scene.add(purpleRimLight);
 
-    // Master Brain Group for Rotation & Panning
-    const brainGroup = new THREE.Group();
-    scene.add(brainGroup);
+    // Master Group for All Brain Elements
+    const masterBrain = new THREE.Group();
+    scene.add(masterBrain);
+    masterGroupRef.current = masterBrain;
 
-    // ----------------------------------------------------
-    // GEOMETRY GENERATION: DUAL-HEMISPHERE BRAIN
-    // ----------------------------------------------------
-    const brainSubdivisions = 48;
+    // -------------------------------------------------------------------------
+    // ANATOMICAL BRAIN SHAPING FUNCTION
+    // Generates realistic human brain contour (Cerebrum, Temporal, Cerebellum, Stem)
+    // -------------------------------------------------------------------------
+    function sampleBrainAnatomy(u, v, isLeft, part = "cerebrum") {
+      // u: longitudinal angle [0, PI]
+      // v: latitudinal angle [0, PI]
+      const phi = v; // 0 (top) to PI (bottom)
+      const theta = u; // 0 to PI
 
-    // Procedural Gyri/Sulci Displaced Hemisphere Builder
-    const createHemisphereMesh = (isLeft) => {
-      const radius = 1.55;
-      const sphereGeo = new THREE.SphereGeometry(
-        radius,
-        brainSubdivisions,
-        brainSubdivisions,
-        0,
-        Math.PI,
-        0,
-        Math.PI
-      );
+      let r = 1.5;
+      let x = r * Math.sin(phi) * Math.sin(theta);
+      let y = r * Math.cos(phi);
+      let z = r * Math.sin(phi) * Math.cos(theta);
 
-      const posAttr = sphereGeo.attributes.position;
-      const vertex = new THREE.Vector3();
+      if (part === "cerebrum") {
+        // Anatomical Ellipsoid
+        z *= 1.35; // elongated anterior-posterior
+        y *= 0.95; // slightly flattened superior-inferior
+        x *= 0.88; // lateral proportion
 
-      for (let i = 0; i < posAttr.count; i++) {
-        vertex.fromBufferAttribute(posAttr, i);
+        // Medial Sagittal Fissure (separate Left & Right hemispheres)
+        const medialSign = isLeft ? 1 : -1;
+        x = Math.abs(x) * 0.95 * medialSign;
+        x += medialSign * 0.08; // gap between hemispheres
 
-        // Ellipsoidal brain shaping: longer along Z (anterior-posterior), taller along Y
-        vertex.z *= 1.25;
-        vertex.y *= 0.95;
-        vertex.x *= 0.85;
-
-        // Frontal and occipital tapered shaping
-        if (vertex.z > 0) {
-          // Frontal lobe rounding
-          vertex.y += Math.sin(vertex.z * 1.2) * 0.12;
-        } else {
-          // Occipital lobe slight taper down
-          vertex.y -= Math.abs(vertex.z) * 0.1;
+        // Frontal Pole (tapers smoothly anteriorly)
+        if (z > 0.4) {
+          y += Math.sin(z * 1.5) * 0.15;
+          x *= 1.0 - z * 0.12;
         }
 
-        // Temporal lobe lateral downward protrusion
-        if (vertex.y < 0 && Math.abs(vertex.z) < 0.6) {
-          vertex.y -= 0.18;
-          vertex.x += (isLeft ? 0.22 : -0.22);
+        // Temporal Lobe Protrusion (arches downward & laterally on ventral side)
+        if (y < 0.1 && Math.abs(z) < 0.8) {
+          const tempWeight = Math.max(0, 1.0 - Math.hypot(y + 0.3, z - 0.1));
+          x += medialSign * tempWeight * 0.45;
+          y -= tempWeight * 0.35;
         }
 
-        // Procedural Sulci & Gyri mathematical wave harmonics
-        const freq1 = 6.5;
-        const freq2 = 11.0;
-        const gyriNoise =
-          Math.sin(vertex.x * freq1) * Math.cos(vertex.y * freq1) * Math.sin(vertex.z * freq1) * 0.055 +
-          Math.sin(vertex.x * freq2 + vertex.y * 5.0) * Math.cos(vertex.z * freq2) * 0.025;
-
-        // Flatten medial longitudinal fissure face
-        if (Math.abs(vertex.x) < 0.08) {
-          vertex.x *= 0.3;
-        } else {
-          vertex.addScaledVector(vertex.clone().normalize(), gyriNoise);
+        // Occipital Lobe (posterior rounding)
+        if (z < -0.4) {
+          y -= Math.abs(z) * 0.08;
         }
 
-        posAttr.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        // Cortical Sulci & Gyri Convolutions (characteristic brain folds)
+        const g1 = Math.sin(x * 6.0) * Math.cos(y * 7.0) * Math.sin(z * 6.5) * 0.07;
+        const g2 = Math.sin(x * 12.0 + z * 8.0) * Math.cos(y * 11.0) * 0.035;
+        const g3 = Math.sin(z * 14.0) * Math.cos(x * 10.0) * 0.02;
+        const gyriOffset = g1 + g2 + g3;
+
+        const pos = new THREE.Vector3(x, y, z);
+        pos.addScaledVector(pos.clone().normalize(), gyriOffset);
+        return pos;
       }
 
-      sphereGeo.computeVertexNormals();
+      if (part === "cerebellum") {
+        // Cerebellar lobes at the lower posterior
+        const medialSign = isLeft ? 1 : -1;
+        r = 0.65;
+        let cx = (r * Math.sin(phi) * Math.sin(theta)) * 0.85 + (medialSign * 0.32);
+        let cy = (r * Math.cos(phi)) * 0.65 - 0.85;
+        let cz = (r * Math.sin(phi) * Math.cos(theta)) * 0.75 - 0.85;
+        // Horizontal folia ripples
+        cy += Math.sin(cy * 25.0) * 0.015;
+        return new THREE.Vector3(cx, cy, cz);
+      }
 
-      // Translucent Cortex Skin Material
-      const skinMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x94a3b8, // Slate pearlescent
-        roughness: 0.25,
-        metalness: 0.05,
-        transmission: 0.65,
-        thickness: 0.8,
+      if (part === "brainstem") {
+        // Brainstem extending downwards from the base
+        r = 0.32;
+        let sx = r * Math.sin(phi) * Math.sin(theta) * 0.55;
+        let sy = -0.7 - v * 0.55;
+        let sz = -0.2 + r * Math.sin(phi) * Math.cos(theta) * 0.65;
+        return new THREE.Vector3(sx, sy, sz);
+      }
+
+      return new THREE.Vector3(x, y, z);
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. BUILD GLOWING NEURAL POINT CLOUD & CONNECTOME
+    // -------------------------------------------------------------------------
+    const particlesGroup = new THREE.Group();
+    masterBrain.add(particlesGroup);
+    particlesGroupRef.current = particlesGroup;
+
+    const brainNodes = [];
+    const particlePositions = [];
+    const particleColors = [];
+    const particleSizes = [];
+
+    // Color Palettes
+    const normalCyan = new THREE.Color(0x00f0ff);
+    const deepBlue = new THREE.Color(0x0072ff);
+    const glowTeal = new THREE.Color(0x38bdf8);
+    const defectAmber = new THREE.Color(0xffa500); // Amber
+    const defectFire = new THREE.Color(0xff4500);  // Fiery orange/red
+    const defectGold = new THREE.Color(0xffe066);  // Gold peak
+
+    const defectPos = defect3DPosition;
+    const defectRadius = 1.15; // Radius of pathological involvement
+
+    function addNode(vec, isSurface = true) {
+      brainNodes.push(vec);
+      particlePositions.push(vec.x, vec.y, vec.z);
+
+      // Distance to real-time Grad-CAM defect center
+      const distToDefect = vec.distanceTo(defectPos);
+
+      if (distToDefect < defectRadius && predictedClass !== "NonDemented") {
+        // Defect particle color: fiery radiant gradient
+        const t = Math.max(0, 1.0 - distToDefect / defectRadius);
+        const col = new THREE.Color().copy(defectAmber).lerp(defectFire, t);
+        if (distToDefect < 0.4) col.lerp(defectGold, 0.7);
+        particleColors.push(col.r, col.g, col.b);
+        particleSizes.push(isSurface ? 3.8 + t * 4.2 : 2.5 + t * 3.0);
+      } else {
+        // Healthy cortical neural color: cyan to deep electric blue
+        const t = (vec.y + 1.5) / 3.0;
+        const col = new THREE.Color().copy(deepBlue).lerp(normalCyan, t);
+        if (Math.random() > 0.85) col.lerp(glowTeal, 0.6);
+        particleColors.push(col.r, col.g, col.b);
+        particleSizes.push(isSurface ? 2.4 : 1.6);
+      }
+    }
+
+    // 6.1 Sample Cerebrum (Left & Right)
+    const cerebrumStepsU = 38;
+    const cerebrumStepsV = 32;
+    [true, false].forEach((isLeft) => {
+      for (let i = 0; i < cerebrumStepsU; i++) {
+        for (let j = 0; j < cerebrumStepsV; j++) {
+          const u = (i / cerebrumStepsU) * Math.PI;
+          const v = (j / cerebrumStepsV) * Math.PI;
+          const p = sampleBrainAnatomy(u, v, isLeft, "cerebrum");
+          addNode(p, true);
+
+          // Deep internal brain parenchyma nodes
+          if (Math.random() > 0.45) {
+            const inner = p.clone().multiplyScalar(0.55 + Math.random() * 0.35);
+            addNode(inner, false);
+          }
+        }
+      }
+    });
+
+    // 6.2 Sample Cerebellum
+    [true, false].forEach((isLeft) => {
+      for (let i = 0; i < 16; i++) {
+        for (let j = 0; j < 14; j++) {
+          const u = (i / 16) * Math.PI;
+          const v = (j / 14) * Math.PI;
+          const p = sampleBrainAnatomy(u, v, isLeft, "cerebellum");
+          addNode(p, true);
+        }
+      }
+    });
+
+    // 6.3 Sample Brainstem
+    for (let i = 0; i < 14; i++) {
+      for (let j = 0; j < 12; j++) {
+        const u = (i / 14) * Math.PI;
+        const v = (j / 12) * Math.PI;
+        const p = sampleBrainAnatomy(u, v, true, "brainstem");
+        addNode(p, true);
+      }
+    }
+
+    // Particle Geometry & Texture
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute("position", new THREE.Float32BufferAttribute(particlePositions, 3));
+    particleGeo.setAttribute("color", new THREE.Float32BufferAttribute(particleColors, 3));
+    particleGeo.setAttribute("size", new THREE.Float32BufferAttribute(particleSizes, 1));
+
+    // Custom Glowing Particle Canvas Sprite
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+    grad.addColorStop(0.3, "rgba(0, 240, 255, 0.8)");
+    grad.addColorStop(0.7, "rgba(0, 114, 255, 0.3)");
+    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+    const particleTexture = new THREE.CanvasTexture(canvas);
+
+    const particleMat = new THREE.PointsMaterial({
+      size: 0.08,
+      vertexColors: true,
+      map: particleTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const particlesMesh = new THREE.Points(particleGeo, particleMat);
+    particlesGroup.add(particlesMesh);
+
+    // -------------------------------------------------------------------------
+    // 7. BUILD SYNAPTIC CONNECTOME FIBER LINES (Neural Tractography)
+    // -------------------------------------------------------------------------
+    const fibersGroup = new THREE.Group();
+    masterBrain.add(fibersGroup);
+    fibersGroupRef.current = fibersGroup;
+
+    const fiberLinePositions = [];
+    const fiberLineColors = [];
+    const maxConnectionDist = 0.32;
+
+    // Connect neighboring nodes
+    for (let i = 0; i < brainNodes.length; i += 2) {
+      const n1 = brainNodes[i];
+      let connections = 0;
+      for (let j = i + 1; j < brainNodes.length; j += 3) {
+        if (connections >= 3) break;
+        const n2 = brainNodes[j];
+        const d = n1.distanceTo(n2);
+        if (d < maxConnectionDist) {
+          fiberLinePositions.push(n1.x, n1.y, n1.z);
+          fiberLinePositions.push(n2.x, n2.y, n2.z);
+
+          // Color fibers: amber/gold near defect, cyan/blue elsewhere
+          const dToDefect = Math.min(n1.distanceTo(defectPos), n2.distanceTo(defectPos));
+          if (dToDefect < defectRadius && predictedClass !== "NonDemented") {
+            const t = 1.0 - dToDefect / defectRadius;
+            const c = new THREE.Color().copy(defectAmber).lerp(defectGold, t);
+            fiberLineColors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+          } else {
+            fiberLineColors.push(0.0, 0.45, 0.85, 0.0, 0.85, 0.95);
+          }
+          connections++;
+        }
+      }
+    }
+
+    const fiberGeo = new THREE.BufferGeometry();
+    fiberGeo.setAttribute("position", new THREE.Float32BufferAttribute(fiberLinePositions, 3));
+    fiberGeo.setAttribute("color", new THREE.Float32BufferAttribute(fiberLineColors, 3));
+
+    const fiberMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const fiberLines = new THREE.LineSegments(fiberGeo, fiberMat);
+    fibersGroup.add(fiberLines);
+
+    // -------------------------------------------------------------------------
+    // 8. REAL-TIME DEFECTED AREA: RADIANT GOLDEN/AMBER STARBURST NEXUS
+    // -------------------------------------------------------------------------
+    const defectGroup = new THREE.Group();
+    masterBrain.add(defectGroup);
+    defectGroupRef.current = defectGroup;
+
+    if (predictedClass !== "NonDemented") {
+      // 8.1 Inner Intense Core
+      const coreGeo = new THREE.SphereGeometry(0.18, 24, 24);
+      const coreMat = new THREE.MeshBasicMaterial({
+        color: 0xffe066, // Brilliant gold
         transparent: true,
-        opacity: skinOpacity,
-        reflectivity: 0.5,
-        clearcoat: 0.3,
-        clearcoatRoughness: 0.2,
+        opacity: 0.95,
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      coreMesh.position.copy(defectPos);
+      defectGroup.add(coreMesh);
+
+      // 8.2 Concentric Outer Fiery Halo
+      const haloGeo = new THREE.SphereGeometry(0.48, 24, 24);
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: 0xff5500, // Fiery amber
+        transparent: true,
+        opacity: 0.35,
+        blending: THREE.AdditiveBlending,
+      });
+      const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+      haloMesh.position.copy(defectPos);
+      defectGroup.add(haloMesh);
+
+      // 8.3 Radiating Synaptic Spikes / Starburst Rays
+      const rayGeo = new THREE.BufferGeometry();
+      const rayPos = [];
+      const rayCols = [];
+      const numRays = 36;
+      for (let r = 0; r < numRays; r++) {
+        const dir = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        ).normalize();
+        const rayLen = 0.4 + Math.random() * 0.7;
+        const endPos = defectPos.clone().addScaledVector(dir, rayLen);
+
+        rayPos.push(defectPos.x, defectPos.y, defectPos.z);
+        rayPos.push(endPos.x, endPos.y, endPos.z);
+
+        rayCols.push(1.0, 0.9, 0.4);
+        rayCols.push(1.0, 0.3, 0.0);
+      }
+      rayGeo.setAttribute("position", new THREE.Float32BufferAttribute(rayPos, 3));
+      rayGeo.setAttribute("color", new THREE.Float32BufferAttribute(rayCols, 3));
+      const rayMat = new THREE.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+      });
+      const rays = new THREE.LineSegments(rayGeo, rayMat);
+      defectGroup.add(rays);
+
+      // 8.4 Sonar Shockwave Rings
+      const ringGeo = new THREE.RingGeometry(0.2, 0.25, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xffaa00,
         side: THREE.DoubleSide,
-        depthWrite: false,
-      });
-
-      const mesh = new THREE.Mesh(sphereGeo, skinMaterial);
-      mesh.position.x = isLeft ? 0.06 : -0.06;
-      if (!isLeft) {
-        mesh.rotation.y = Math.PI;
-      }
-      return mesh;
-    };
-
-    const skinGroup = new THREE.Group();
-    const leftHemisphere = createHemisphereMesh(true);
-    const rightHemisphere = createHemisphereMesh(false);
-    skinGroup.add(leftHemisphere);
-    skinGroup.add(rightHemisphere);
-    brainGroup.add(skinGroup);
-    skinGroupRef.current = skinGroup;
-
-    // ----------------------------------------------------
-    // CEREBELLUM & BRAINSTEM
-    // ----------------------------------------------------
-    const cerebellumGeo = new THREE.SphereGeometry(0.55, 24, 24);
-    cerebellumGeo.scale(1.2, 0.6, 0.8);
-    const cerebellumMat = new THREE.MeshStandardMaterial({
-      color: 0x64748b,
-      roughness: 0.5,
-      transparent: true,
-      opacity: 0.45,
-    });
-    const cerebellumMesh = new THREE.Mesh(cerebellumGeo, cerebellumMat);
-    cerebellumMesh.position.set(0, -0.9, -1.0);
-    brainGroup.add(cerebellumMesh);
-
-    const stemGeo = new THREE.CylinderGeometry(0.2, 0.25, 1.1, 16);
-    const stemMesh = new THREE.Mesh(stemGeo, cerebellumMat);
-    stemMesh.position.set(0, -1.3, -0.4);
-    brainGroup.add(stemMesh);
-
-    // ----------------------------------------------------
-    // HOLOGRAPHIC GEODESIC GLOBE WIREMESH CAGE
-    // ----------------------------------------------------
-    const cageGroup = new THREE.Group();
-    const cageGeo = new THREE.IcosahedronGeometry(2.35, 2);
-    const cageWireGeo = new THREE.WireframeGeometry(cageGeo);
-    const cageMat = new THREE.LineBasicMaterial({
-      color: 0x3b82f6,
-      transparent: true,
-      opacity: 0.16,
-      linewidth: 1,
-    });
-    const cageLine = new THREE.LineSegments(cageWireGeo, cageMat);
-    cageGroup.add(cageLine);
-
-    // Stereotactic Coordinate Rings
-    const ringGeo = new THREE.RingGeometry(2.32, 2.36, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0x60a5fa,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.2,
-    });
-    const axialRing = new THREE.Mesh(ringGeo, ringMat);
-    axialRing.rotation.x = Math.PI / 2;
-    cageGroup.add(axialRing);
-
-    const coronalRing = new THREE.Mesh(ringGeo, ringMat);
-    cageGroup.add(coronalRing);
-
-    brainGroup.add(cageGroup);
-    cageGroupRef.current = cageGroup;
-
-    // ----------------------------------------------------
-    // NEURAL SYNAPTIC TRACTS & PARTICLES (NERVES)
-    // ----------------------------------------------------
-    const nervesGroup = new THREE.Group();
-    const nerveLines = [];
-    const nerveSplines = [];
-
-    // Construct 18 organic neural fiber bundles through the hemispheres
-    const nervePointsSets = [
-      // Corpus Callosum / Inter-hemispheric bridging tracts
-      [[-0.9, 0.2, -0.2], [-0.4, 0.5, 0.0], [0.4, 0.5, 0.0], [0.9, 0.2, -0.2]],
-      [[-0.8, -0.1, 0.3], [-0.3, 0.3, 0.2], [0.3, 0.3, 0.2], [0.8, -0.1, 0.3]],
-      // Frontal to Temporal Tracts (Left)
-      [[0.3, 0.6, 1.1], [0.7, 0.3, 0.7], [0.85, -0.2, 0.1], [0.6, -0.4, -0.5]],
-      [[0.2, 0.4, 1.2], [0.5, 0.1, 0.8], [0.75, -0.3, 0.2], [0.5, -0.5, -0.3]],
-      // Frontal to Temporal Tracts (Right)
-      [[-0.3, 0.6, 1.1], [-0.7, 0.3, 0.7], [-0.85, -0.2, 0.1], [-0.6, -0.4, -0.5]],
-      [[-0.2, 0.4, 1.2], [-0.5, 0.1, 0.8], [-0.75, -0.3, 0.2], [-0.5, -0.5, -0.3]],
-      // Medial Temporal & Hippocampal Synaptic Tracts (Left)
-      [[0.2, -0.2, -0.7], [0.55, -0.3, -0.2], [0.65, -0.2, 0.3], [0.35, 0.1, 0.6]],
-      [[0.3, -0.3, -0.5], [0.6, -0.25, 0.0], [0.5, -0.1, 0.4], [0.2, 0.2, 0.7]],
-      // Medial Temporal & Hippocampal Synaptic Tracts (Right)
-      [[-0.2, -0.2, -0.7], [-0.55, -0.3, -0.2], [-0.65, -0.2, 0.3], [-0.35, 0.1, 0.6]],
-      [[-0.3, -0.3, -0.5], [-0.6, -0.25, 0.0], [-0.5, -0.1, 0.4], [-0.2, 0.2, 0.7]],
-      // Parietal to Occipital Superior Longitudinal Fasciculus
-      [[0.6, 0.7, 0.4], [0.75, 0.5, -0.4], [0.6, 0.1, -1.0], [0.3, -0.2, -1.2]],
-      [[-0.6, 0.7, 0.4], [-0.75, 0.5, -0.4], [-0.6, 0.1, -1.0], [-0.3, -0.2, -1.2]],
-      // Cingulum Deep Pathways
-      [[0.15, 0.65, 0.8], [0.18, 0.75, 0.0], [0.15, 0.5, -0.7], [0.1, 0.0, -0.9]],
-      [[-0.15, 0.65, 0.8], [-0.18, 0.75, 0.0], [-0.15, 0.5, -0.7], [-0.1, 0.0, -0.9]],
-      // Brainstem Ascending Reticular Projections
-      [[0.0, -1.2, -0.4], [0.15, -0.6, -0.3], [0.35, -0.2, 0.1], [0.5, 0.3, 0.5]],
-      [[0.0, -1.2, -0.4], [-0.15, -0.6, -0.3], [-0.35, -0.2, 0.1], [-0.5, 0.3, 0.5]],
-    ];
-
-    const nerveColor = new THREE.Color(0x0284c7); // Vivid medical cyan-blue
-
-    nervePointsSets.forEach((pts) => {
-      const vPts = pts.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
-      const spline = new THREE.CatmullRomCurve3(vPts);
-      nerveSplines.push(spline);
-
-      const tubeGeo = new THREE.TubeGeometry(spline, 48, 0.016, 6, false);
-      const tubeMat = new THREE.MeshStandardMaterial({
-        color: nerveColor,
-        roughness: 0.3,
-        metalness: 0.2,
         transparent: true,
-        opacity: 0.72,
-        emissive: 0x0369a1,
-        emissiveIntensity: 0.3,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
       });
-      const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
-      nervesGroup.add(tubeMesh);
-    });
+      const shockwaveRing = new THREE.Mesh(ringGeo, ringMat);
+      shockwaveRing.position.copy(defectPos);
+      shockwaveRing.lookAt(camera.position);
+      defectGroup.add(shockwaveRing);
 
-    // Synaptic Action Potential Pulse Particles
-    const particleGeometry = new THREE.SphereGeometry(0.042, 12, 12);
-    const particleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.95,
-    });
+      // Dynamic Defect Point Light
+      const defectLight = new THREE.PointLight(0xffa500, 3.5, 4.0);
+      defectLight.position.copy(defectPos);
+      defectGroup.add(defectLight);
+    }
 
-    const particles = [];
-    nerveSplines.forEach((spline, idx) => {
-      const pMesh = new THREE.Mesh(particleGeometry, particleMaterial);
-      nervesGroup.add(pMesh);
-      particles.push({
-        mesh: pMesh,
-        spline,
-        progress: (idx * 0.12) % 1.0,
-        speed: 0.003 + (idx % 3) * 0.0015,
-      });
-    });
-    nervesParticlesRef.current = particles;
+    // -------------------------------------------------------------------------
+    // 9. ETHEREAL CELESTIAL ORBITAL DATA RINGS (Telemetry Halos)
+    // -------------------------------------------------------------------------
+    const orbitsGroup = new THREE.Group();
+    masterBrain.add(orbitsGroup);
+    orbitsGroupRef.current = orbitsGroup;
 
-    brainGroup.add(nervesGroup);
-    nervesGroupRef.current = nervesGroup;
-
-    // ----------------------------------------------------
-    // DYNAMIC ATROPHY DEFECT HOTSPOT (GRAD-CAM LOCALIZED)
-    // ----------------------------------------------------
-    const hotspotGroup = new THREE.Group();
-
-    // 1. Hotspot Core Sphere
-    const coreGeo = new THREE.SphereGeometry(0.18, 24, 24);
-    const coreMat = new THREE.MeshBasicMaterial({
-      color: defectMetadata.hotspotColor,
-    });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-    hotspotGroup.add(coreMesh);
-
-    // 2. Animated Pulsing Energy Halo
-    const haloGeo = new THREE.SphereGeometry(0.36, 24, 24);
-    const haloMat = new THREE.MeshBasicMaterial({
-      color: defectMetadata.hotspotColor,
-      transparent: true,
-      opacity: 0.45,
-      wireframe: true,
-    });
-    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-    hotspotGroup.add(haloMesh);
-
-    // 3. Coordinate Beacon Pin / Stalk pointing outward
-    const stalkGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 8);
-    const stalkMat = new THREE.MeshBasicMaterial({
-      color: defectMetadata.hotspotColor,
-      transparent: true,
-      opacity: 0.7,
-    });
-    const stalkMesh = new THREE.Mesh(stalkGeo, stalkMat);
-    stalkMesh.position.y = 0.4;
-    hotspotGroup.add(stalkMesh);
-
-    // Target Locator Ring
-    const targetRingGeo = new THREE.RingGeometry(0.12, 0.16, 24);
-    const targetRingMat = new THREE.MeshBasicMaterial({
-      color: defectMetadata.hotspotColor,
+    // Ring 1: Equatorial Latitude Ring
+    const orbit1Geo = new THREE.RingGeometry(2.35, 2.38, 64);
+    const orbit1Mat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
       side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
     });
-    const targetRing = new THREE.Mesh(targetRingGeo, targetRingMat);
-    targetRing.position.y = 0.8;
-    targetRing.rotation.x = Math.PI / 2;
-    hotspotGroup.add(targetRing);
+    const orbit1 = new THREE.Mesh(orbit1Geo, orbit1Mat);
+    orbit1.rotation.x = Math.PI / 2;
+    orbitsGroup.add(orbit1);
 
-    // Place Hotspot at Computed 3D Coordinates
-    hotspotGroup.position.copy(defect3DPosition);
-    brainGroup.add(hotspotGroup);
-    hotspotGroupRef.current = hotspotGroup;
+    // Ring 2: Tilted Polar Telemetry Ring
+    const orbit2Geo = new THREE.RingGeometry(2.65, 2.68, 64);
+    const orbit2Mat = new THREE.MeshBasicMaterial({
+      color: 0x0072ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+    });
+    const orbit2 = new THREE.Mesh(orbit2Geo, orbit2Mat);
+    orbit2.rotation.x = Math.PI / 3;
+    orbit2.rotation.y = Math.PI / 4;
+    orbitsGroup.add(orbit2);
 
-    // ----------------------------------------------------
-    // RENDER LOOP & ANIMATION
-    // ----------------------------------------------------
+    // Satellite Data Nodes on Orbits
+    const satGeo = new THREE.SphereGeometry(0.04, 12, 12);
+    const satMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    for (let s = 0; s < 6; s++) {
+      const angle = (s / 6) * Math.PI * 2;
+      const sat = new THREE.Mesh(satGeo, satMat);
+      sat.position.set(Math.cos(angle) * 2.36, 0, Math.sin(angle) * 2.36);
+      orbit1.add(sat);
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. ANIMATION RENDER LOOP
+    // -------------------------------------------------------------------------
     let clock = new THREE.Clock();
 
     const animate = () => {
       animFrameIdRef.current = requestAnimationFrame(animate);
-
-      const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Slow ambient auto-rotation if enabled
-      if (autoRotate) {
-        brainGroup.rotation.y += delta * 0.25;
+      // Gentle continuous 360-degree rotation
+      if (autoRotate && masterBrain) {
+        masterBrain.rotation.y += 0.0035;
       }
 
-      // Counter-rotate the wireframe cage slightly for 3D depth parallax
-      cageGroup.rotation.y -= delta * 0.05;
+      // Orbital telemetry rotation
+      if (orbitsGroup) {
+        orbitsGroup.rotation.y -= 0.002;
+        orbitsGroup.rotation.z += 0.001;
+      }
 
-      // Pulse the defect lesion halo
-      const pulseScale = 1.0 + Math.sin(elapsedTime * 4.0) * 0.35;
-      haloMesh.scale.set(pulseScale, pulseScale, pulseScale);
-      haloMat.opacity = 0.5 - (pulseScale - 1.0) * 0.4;
+      // Defect Starburst Pulsing & Shockwave Expansion
+      if (defectGroup && defectGroup.children.length > 0) {
+        const pulse = 1.0 + Math.sin(elapsedTime * 4.5) * 0.15;
+        const shockwave = (elapsedTime * 1.2) % 1.5;
 
-      // Animate action potentials traveling along nerve fibers
-      particles.forEach((p) => {
-        p.progress = (p.progress + p.speed) % 1.0;
-        const pt = p.spline.getPointAt(p.progress);
-        p.mesh.position.copy(pt);
-      });
+        // Pulse core
+        const core = defectGroup.children[0];
+        if (core) core.scale.set(pulse, pulse, pulse);
+
+        // Expand shockwave ring
+        const ring = defectGroup.children[3];
+        if (ring) {
+          const ringScale = 1.0 + shockwave * 2.2;
+          ring.scale.set(ringScale, ringScale, ringScale);
+          ring.material.opacity = Math.max(0, 0.7 - shockwave * 0.5);
+          ring.lookAt(camera.position);
+        }
+      }
+
+      // Connectome Fibers Breathing Opacity
+      if (fibersGroup && fiberLines) {
+        fiberLines.material.opacity = 0.25 + Math.sin(elapsedTime * 2.0) * 0.1;
+      }
 
       controls.update();
       renderer.render(scene, camera);
@@ -499,294 +590,163 @@ export default function ThreeBrainViewer({
 
     animate();
 
-    // Resize Handler
+    // Resize handler
     const handleResize = () => {
-      if (!container) return;
+      if (!container || !renderer || !camera) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
+    window.addEventListener("resize", handleResize);
 
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(container);
-
-    // Clean up WebGL resources
     return () => {
-      cancelAnimationFrame(animFrameIdRef.current);
-      resizeObserver.disconnect();
+      window.removeEventListener("resize", handleResize);
+      if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
-  }, [defect3DPosition, defectMetadata]);
-
-  // Sync Skin Opacity Dynamically
-  useEffect(() => {
-    if (!skinGroupRef.current) return;
-    skinGroupRef.current.visible = showSkin;
-    skinGroupRef.current.children.forEach((mesh) => {
-      if (mesh.material) {
-        mesh.material.opacity = skinOpacity;
-        mesh.material.transparent = true;
-      }
-    });
-  }, [showSkin, skinOpacity]);
-
-  // Sync Toggles Dynamically
-  useEffect(() => {
-    if (cageGroupRef.current) cageGroupRef.current.visible = showCage;
-  }, [showCage]);
-
-  useEffect(() => {
-    if (nervesGroupRef.current) nervesGroupRef.current.visible = showNerves;
-  }, [showNerves]);
-
-  useEffect(() => {
-    if (hotspotGroupRef.current) hotspotGroupRef.current.visible = showHotspot;
-  }, [showHotspot]);
+  }, [predictedClass, defect3DPosition]);
 
   // Camera Presets
-  const setCameraPreset = (preset) => {
-    setActivePreset(preset);
+  const setCameraView = (view) => {
+    setActivePreset(view);
     const camera = cameraRef.current;
     const controls = controlsRef.current;
     if (!camera || !controls) return;
 
-    controls.target.set(0, 0, 0);
-
-    if (preset === "axial") {
-      // Axial: Top-down (matching 2D axial MRI slice)
-      camera.position.set(0, 6.2, 0.01);
-    } else if (preset === "coronal") {
-      // Coronal: Anterior (Front-facing)
-      camera.position.set(0, 0.5, 5.8);
-    } else if (preset === "sagittal") {
-      // Sagittal: Lateral (Side profile)
-      camera.position.set(5.8, 0.4, 0);
-    } else {
-      // Isometric: 3D Perspective
-      camera.position.set(4.5, 3.2, 5.0);
+    switch (view) {
+      case "lateral": // Side profile like user reference image
+        camera.position.set(6.2, 0.5, 0.0);
+        break;
+      case "anterior": // Frontal view
+        camera.position.set(0.0, 0.5, 6.2);
+        break;
+      case "superior": // Axial top-down view
+        camera.position.set(0.0, 6.8, 0.01);
+        break;
+      case "posterior": // Occipital rear view
+        camera.position.set(0.0, 0.5, -6.2);
+        break;
+      case "isometric":
+      default:
+        camera.position.set(4.2, 2.0, 5.0);
+        break;
     }
+    controls.target.set(0, 0, 0);
     controls.update();
   };
 
   return (
     <div
-      className={`relative bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 ${
-        isFullscreen ? "fixed inset-4 z-50 rounded-2xl shadow-2xl" : "w-full"
+      className={`relative w-full rounded-2xl overflow-hidden bento-card border border-cyan-500/20 shadow-2xl transition-all ${
+        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen bg-[#030712]" : "h-[620px]"
       }`}
     >
-      {/* 3D Header & Modality Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-slate-100 bg-white/90 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 shadow-xs">
-            <Brain className="w-5 h-5 text-blue-600" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-                Interactive 3D Holographic Brain & Neural Tract Workstation
-              </h3>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                Three.js WebGL
-              </span>
+      {/* 3D WebGL Canvas Mount */}
+      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+
+      {/* Top Floating Glass Bar: Telemetry & Orientation */}
+      <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        {/* Left: Dynamic Pathology Floating Pill (matches reference image) */}
+        <div className="pointer-events-auto flex items-center gap-3">
+          <div className="bento-glass px-4 py-2.5 rounded-xl border border-cyan-500/30 shadow-lg flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-amber-400 animate-ping" />
+            <div>
+              <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Real-Time Defect Localization
+              </div>
+              <div className="text-sm font-extrabold text-cyan-300 font-display flex items-center gap-2">
+                <span>{defectMetadata.regionName}</span>
+                <span className="text-amber-400 font-mono text-xs font-black">
+                  {defectMetadata.saliencyPct}% Peak
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              3D stereotactic mapping of 2D Grad-CAM peak activations with translucent cortex, nerve pathways, and localized defect hotspot
-            </p>
           </div>
         </div>
 
-        {/* Action Controls Header */}
-        <div className="flex items-center gap-2">
-          {/* Preset Buttons */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-            <button
-              onClick={() => setCameraPreset("isometric")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                activePreset === "isometric" ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              3D Iso
-            </button>
-            <button
-              onClick={() => setCameraPreset("axial")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                activePreset === "axial" ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Axial (Top)
-            </button>
-            <button
-              onClick={() => setCameraPreset("coronal")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                activePreset === "coronal" ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Coronal (Front)
-            </button>
-            <button
-              onClick={() => setCameraPreset("sagittal")}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                activePreset === "sagittal" ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Sagittal (Side)
-            </button>
+        {/* Right: Camera Presets & Fullscreen */}
+        <div className="pointer-events-auto flex items-center gap-2 bento-glass px-3 py-1.5 rounded-xl border border-white/10">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden sm:block">
+            View Angle
           </div>
+          {[
+            { id: "isometric", label: "3D Iso" },
+            { id: "lateral", label: "Lateral" },
+            { id: "superior", label: "Axial" },
+            { id: "anterior", label: "Coronal" },
+          ].map((preset) => (
+            <button
+              key={preset.id}
+              onClick={() => setCameraView(preset.id)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                activePreset === preset.id
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+
+          <div className="w-[1px] h-4 bg-white/10 mx-1" />
+
+          {/* Auto Rotate Toggle */}
+          <button
+            onClick={() => setAutoRotate(!autoRotate)}
+            className={`p-1.5 rounded-lg transition-all ${
+              autoRotate ? "text-cyan-400 bg-cyan-500/20" : "text-slate-400 hover:text-white"
+            }`}
+            title={autoRotate ? "Pause Rotation" : "Auto Rotate"}
+          >
+            {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+          </button>
 
           {/* Fullscreen Toggle */}
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
-            title={isFullscreen ? "Exit Fullscreen" : "Expand Fullscreen"}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-all"
+            title="Toggle Fullscreen"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* Main 3D Canvas Viewport Container */}
-      <div className="relative w-full aspect-16/10 sm:aspect-21/9 min-h-[460px] bg-slate-50 select-none">
-        {/* Three.js Canvas Mount */}
-        <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-
-        {/* Floating Interactive 3D Model Output Commentary Pin */}
-        <div className="absolute top-4 left-4 max-w-sm bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-4 shadow-lg space-y-3 pointer-events-auto">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <span className={`w-2.5 h-2.5 rounded-full animate-ping ${
-                defectMetadata.isNormal ? "bg-emerald-500" : "bg-rose-500"
-              }`} />
-              <span>Target Lesion Focus</span>
-            </div>
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
-              defectMetadata.isNormal
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-rose-50 text-rose-700 border border-rose-200"
-            }`}>
-              {predictedClass}
-            </span>
+      {/* Bottom Floating Legend & Layer Toggles (Inspired by user image) */}
+      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        {/* Anatomical Connectome Legend */}
+        <div className="pointer-events-auto bento-glass px-4 py-2.5 rounded-xl border border-white/10 flex items-center gap-4 text-xs font-medium">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-xs shadow-cyan-400/50" />
+            <span className="text-slate-300">Cerebral Cortex</span>
           </div>
-
-          <div>
-            <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">
-              {defectMetadata.regionName}
-            </h4>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-mono font-bold text-blue-600">
-                {defectMetadata.saliencyPct.toFixed(1)}% Grad-CAM Saliency
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">• Primary Model Driver</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
+            <span className="text-slate-300">Neural Pathways</span>
           </div>
-
-          {/* Model Output Clinical Reasoning Box ("highlight the part which is reason for it") */}
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 leading-relaxed space-y-1">
-            <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
-              <Info className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pathological Reason for Diagnosis:</span>
-            </div>
-            <p className="text-[11.5px]">{defectMetadata.reasoning}</p>
-          </div>
-
-          {/* Saliency & 3D Coordinates Pill */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-            <span>3D Stereotactic Coords:</span>
-            <span className="font-mono text-slate-700 font-bold">
-              X:{defect3DPosition.x.toFixed(2)} Y:{defect3DPosition.y.toFixed(2)} Z:{defect3DPosition.z.toFixed(2)}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-xs shadow-amber-400/80" />
+            <span className="text-amber-300 font-semibold">Grad-CAM Defect</span>
           </div>
         </div>
 
-        {/* Viewport Overlay Controls Toolbar (Bottom Floating) */}
-        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 shadow-md pointer-events-auto">
-          {/* Layer Visibility Toggles */}
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            <button
-              onClick={() => setShowSkin(!showSkin)}
-              className={`px-3 py-1.5 rounded-xl transition-all border ${
-                showSkin
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-              }`}
-            >
-              Cortex Skin
-            </button>
-
-            <button
-              onClick={() => setShowNerves(!showNerves)}
-              className={`px-3 py-1.5 rounded-xl transition-all border ${
-                showNerves
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-              }`}
-            >
-              Synaptic Tracts
-            </button>
-
-            <button
-              onClick={() => setShowCage(!showCage)}
-              className={`px-3 py-1.5 rounded-xl transition-all border ${
-                showCage
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-              }`}
-            >
-              Wireframe Cage
-            </button>
-
-            <button
-              onClick={() => setShowHotspot(!showHotspot)}
-              className={`px-3 py-1.5 rounded-xl transition-all border ${
-                showHotspot
-                  ? "bg-rose-50 text-rose-700 border-rose-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-              }`}
-            >
-              Defect Hotspot
-            </button>
-
-            <button
-              onClick={() => setAutoRotate(!autoRotate)}
-              className={`px-3 py-1.5 rounded-xl transition-all border flex items-center gap-1.5 ${
-                autoRotate
-                  ? "bg-slate-800 text-white border-slate-900"
-                  : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-              }`}
-            >
-              {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{autoRotate ? "Pause Spin" : "Auto Spin"}</span>
-            </button>
-          </div>
-
-          {/* Skin Translucency Slider */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
-            <span>Skin Translucency:</span>
-            <input
-              type="range"
-              min="10"
-              max="80"
-              value={Math.round(skinOpacity * 100)}
-              onChange={(e) => setSkinOpacity(Number(e.target.value) / 100)}
-              className="w-24 accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-            />
-            <span className="font-mono text-slate-800 w-8">{Math.round(skinOpacity * 100)}%</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Feature Explanation */}
-      <div className="p-4 bg-slate-50/70 border-t border-slate-100 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Compass className="w-4 h-4 text-slate-400" />
-          <span>Click and drag to rotate 360° • Pinch or scroll to zoom • Right-click to pan</span>
-        </div>
-        <div className="font-semibold text-slate-600">
-          Stereotactic Coordinate Space: MNI-152 Normalized
+        {/* Real-time Grad-CAM Coordinates Telemetry Badge */}
+        <div className="pointer-events-auto bento-glass px-3.5 py-2 rounded-xl border border-white/10 text-xs font-mono text-slate-400 flex items-center gap-3">
+          <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+          <span>
+            3D Vector: [
+            <span className="text-cyan-300 font-semibold">{defect3DPosition.x.toFixed(2)}</span>,{" "}
+            <span className="text-cyan-300 font-semibold">{defect3DPosition.y.toFixed(2)}</span>,{" "}
+            <span className="text-cyan-300 font-semibold">{defect3DPosition.z.toFixed(2)}</span>]
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            60 FPS WebGL
+          </span>
         </div>
       </div>
     </div>

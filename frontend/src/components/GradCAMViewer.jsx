@@ -72,20 +72,20 @@ export default function GradCAMViewer({
   ];
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-6">
+    <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100">
-              <Sparkles className="w-4 h-4 text-teal-600" />
-            </span>
-            <h3 className="font-bold text-lg text-slate-900">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+            </div>
+            <h3 className="font-bold text-lg text-white font-display">
               Grad-CAM Class Activation Mapping (XAI)
             </h3>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Gradient-weighted saliency highlighting high-activation cortical atrophy features for <strong>{predictedClass || "Dementia"}</strong>
+          <p className="text-xs text-slate-400 mt-1">
+            Gradient-weighted saliency highlighting high-activation cortical atrophy features for <strong className="text-cyan-300">{predictedClass || "Dementia"}</strong>
           </p>
         </div>
 
@@ -95,25 +95,25 @@ export default function GradCAMViewer({
             onClick={() => setShowRadiologistToolbar(!showRadiologistToolbar)}
             className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
               showRadiologistToolbar
-                ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                : "bento-glass text-slate-300 border-white/10 hover:bg-white/10"
             }`}
             title="Toggle Radiologist Window Width / Window Level controls"
           >
-            <Sliders className="w-3.5 h-3.5 text-blue-500" />
+            <Sliders className="w-3.5 h-3.5 text-cyan-400" />
             <span>WW / WL Controls</span>
             {(windowWidth !== 100 || windowLevel !== 100 || invertGrayscale) && (
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
             )}
           </button>
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+          <div className="flex items-center bento-glass p-1 rounded-xl border border-white/10 text-xs font-semibold">
             <button
               onClick={() => setViewMode("split-wipe")}
               className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
                 viewMode === "split-wipe"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               <SplitSquareVertical className="w-3.5 h-3.5" />
@@ -123,8 +123,8 @@ export default function GradCAMViewer({
               onClick={() => setViewMode("side-by-side")}
               className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
                 viewMode === "side-by-side"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
@@ -134,8 +134,8 @@ export default function GradCAMViewer({
               onClick={() => setViewMode("blend-slider")}
               className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
                 viewMode === "blend-slider"
-                  ? "bg-white text-blue-700 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -147,10 +147,10 @@ export default function GradCAMViewer({
 
       {/* Radiologist WW/WL Windowing Toolbar */}
       {showRadiologistToolbar && (
-        <div className="p-4 rounded-xl bg-slate-900 text-slate-100 border border-slate-800 space-y-4 animate-in fade-in duration-200">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="p-4 rounded-2xl bg-black/50 text-slate-100 border border-cyan-500/30 space-y-4 animate-in fade-in duration-200 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded bg-blue-500/20 text-blue-400 font-mono text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">
                 DICOM WW/WL
               </span>
               <span className="text-xs font-bold text-slate-200">
@@ -161,31 +161,31 @@ export default function GradCAMViewer({
               <span className="text-slate-400">Presets:</span>
               <button
                 onClick={() => applyPreset(100, 100, false)}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5"
               >
                 Standard T1
               </button>
               <button
                 onClick={() => applyPreset(135, 105, false)}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5"
               >
                 Soft Tissue
               </button>
               <button
                 onClick={() => applyPreset(175, 90, false)}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5"
               >
                 CSF / Fissures
               </button>
               <button
                 onClick={() => applyPreset(120, 100, true)}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5"
               >
                 Inverted Film
               </button>
               <button
                 onClick={() => applyPreset(100, 100, false)}
-                className="px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 transition-colors ml-2"
+                className="px-2.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 transition-colors border border-rose-500/30 ml-2"
               >
                 Reset
               </button>
@@ -196,7 +196,7 @@ export default function GradCAMViewer({
             <div className="space-y-1.5">
               <div className="flex justify-between text-slate-300 font-mono">
                 <span>Window Width (Contrast)</span>
-                <span className="text-blue-400 font-bold">{windowWidth}%</span>
+                <span className="text-cyan-400 font-bold">{windowWidth}%</span>
               </div>
               <input
                 type="range"
@@ -204,14 +204,14 @@ export default function GradCAMViewer({
                 max="250"
                 value={windowWidth}
                 onChange={(e) => setWindowWidth(Number(e.target.value))}
-                className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-cyan-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
               />
             </div>
 
             <div className="space-y-1.5">
               <div className="flex justify-between text-slate-300 font-mono">
                 <span>Window Level (Brightness)</span>
-                <span className="text-blue-400 font-bold">{windowLevel}%</span>
+                <span className="text-cyan-400 font-bold">{windowLevel}%</span>
               </div>
               <input
                 type="range"
@@ -219,51 +219,45 @@ export default function GradCAMViewer({
                 max="200"
                 value={windowLevel}
                 onChange={(e) => setWindowLevel(Number(e.target.value))}
-                className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                className="w-full accent-cyan-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
               />
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0">
-              <span className="text-slate-300">Grayscale Inversion:</span>
+            <div className="flex items-center justify-between sm:justify-end gap-3 pt-4 sm:pt-0">
               <button
                 onClick={() => setInvertGrayscale(!invertGrayscale)}
-                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors border ${
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                   invertGrayscale
-                    ? "bg-blue-600 border-blue-500 text-white"
-                    : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50"
+                    : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
                 }`}
               >
-                {invertGrayscale ? "Inverted (ON)" : "Standard (OFF)"}
+                {invertGrayscale ? "Inverted Grayscale Active" : "Invert Grayscale LUT"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Interactive Viewer Display */}
+      {/* VIEWPORT 1: SPLIT WIPE INTERACTIVE CURSOR */}
       {viewMode === "split-wipe" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>← Original Anatomical MRI</span>
-            <span className="font-bold text-blue-700">Drag Divider to Reveal Grad-CAM Overlay ({splitPos}%)</span>
-            <span>Grad-CAM Activation Heatmap →</span>
-          </div>
-
+        <div className="space-y-3">
           <div
             ref={containerRef}
+            onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onTouchMove={handleTouchMove}
-            className="relative max-w-xl mx-auto aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-inner select-none cursor-ew-resize"
+            className="relative w-full h-[400px] sm:h-[460px] bg-black rounded-2xl overflow-hidden cursor-ew-resize select-none border border-cyan-500/20 shadow-2xl"
           >
-            {/* Background Image: Grad-CAM Overlay */}
+            {/* Background Layer: PyTorch Grad-CAM Saliency Overlay */}
             <img
               src={fullGradcamUrl || fullOrigUrl}
-              alt="Grad-CAM Overlay"
+              alt="Grad-CAM Saliency"
               className="absolute inset-0 w-full h-full object-contain pointer-events-none"
               style={imageFilterStyle}
             />
 
-            {/* Foreground Clipped Image: Original Scan */}
+            {/* Foreground Layer: Original MRI Masked by Split Wipe Divider */}
             <div
               className="absolute inset-0 overflow-hidden pointer-events-none"
               style={{ width: `${splitPos}%` }}
@@ -274,63 +268,78 @@ export default function GradCAMViewer({
                 className="absolute inset-0 w-full h-full object-contain max-w-none"
                 style={{
                   ...imageFilterStyle,
-                  width: containerRef.current ? containerRef.current.clientWidth : "100%",
+                  width: containerRef.current ? `${containerRef.current.clientWidth}px` : "100%",
                 }}
               />
             </div>
 
-            {/* Draggable Divider Line */}
+            {/* Split Wipe Drag Handle Divider */}
             <div
-              onMouseDown={handleMouseDown}
-              className="absolute top-0 bottom-0 w-1 bg-white shadow-2xl flex items-center justify-center cursor-ew-resize"
+              className="absolute top-0 bottom-0 w-1 bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.8)] z-20 pointer-events-none"
               style={{ left: `${splitPos}%` }}
             >
-              <div className="w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center text-slate-700 text-xs font-black">
-                ⬌
+              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#030712] border-2 border-cyan-400 flex items-center justify-center text-cyan-300 shadow-xl">
+                <SplitSquareVertical className="w-4 h-4" />
+              </div>
+            </div>
+
+            {/* Overlay Labels */}
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-[11px] font-mono font-bold text-slate-300 border border-white/10 pointer-events-none">
+              Original Axial MRI ({splitPos}%)
+            </div>
+            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-[11px] font-mono font-bold text-cyan-300 border border-cyan-500/30 pointer-events-none">
+              PyTorch Grad-CAM Activation ({100 - splitPos}%)
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 text-center font-mono">
+            ↔ Drag cursor horizontally across the scan to reveal the underlying activation heatmap
+          </p>
+        </div>
+      )}
+
+      {/* VIEWPORT 2: SIDE-BY-SIDE DUAL PLATE COMPARISON */}
+      {viewMode === "side-by-side" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="relative h-[340px] sm:h-[400px] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+              <img
+                src={fullOrigUrl}
+                alt="Original MRI"
+                className="w-full h-full object-contain"
+                style={imageFilterStyle}
+              />
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-[11px] font-mono font-bold text-slate-300 border border-white/10">
+                1. Original Axial T1 MRI
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="relative h-[340px] sm:h-[400px] bg-black rounded-2xl overflow-hidden border border-cyan-500/30 shadow-xl">
+              <img
+                src={fullGradcamUrl || fullOrigUrl}
+                alt="Grad-CAM Saliency"
+                className="w-full h-full object-contain"
+                style={imageFilterStyle}
+              />
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-[11px] font-mono font-bold text-cyan-300 border border-cyan-500/40">
+                2. PyTorch Grad-CAM Thermal Plate
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {viewMode === "side-by-side" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-              1. Input Axial Brain Scan
-            </span>
-            <div className="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 p-2 flex items-center justify-center">
-              <img
-                src={fullOrigUrl}
-                alt="Original MRI"
-                className="w-full h-full object-contain rounded-xl"
-                style={imageFilterStyle}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-teal-700 block uppercase tracking-wider">
-              2. Grad-CAM Activation Heatmap
-            </span>
-            <div className="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 p-2 flex items-center justify-center">
-              <img
-                src={fullGradcamUrl || fullOrigUrl}
-                alt="Grad-CAM Saliency"
-                className="w-full h-full object-contain rounded-xl"
-                style={imageFilterStyle}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* VIEWPORT 3: CONTINUOUS ALPHA BLEND SLIDER */}
       {viewMode === "blend-slider" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-            <span>Original MRI (0%)</span>
-            <span className="font-bold text-blue-700">Heatmap Blend: {blendOpacity}%</span>
-            <span>Pure Heatmap (100%)</span>
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-slate-400">Anatomical MRI (0%)</span>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-300">Blend Factor:</span>
+              <span className="text-cyan-400 font-bold">{blendOpacity}%</span>
+            </div>
+            <span className="text-cyan-400">Thermal Saliency (100%)</span>
           </div>
 
           <input
@@ -339,18 +348,16 @@ export default function GradCAMViewer({
             max="100"
             value={blendOpacity}
             onChange={(e) => setBlendOpacity(Number(e.target.value))}
-            className="w-full accent-blue-600 h-2 bg-slate-100 rounded-lg cursor-pointer"
+            className="w-full accent-cyan-400 h-2 bg-slate-800 rounded-lg cursor-pointer"
           />
 
-          <div className="relative max-w-xl mx-auto aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-inner">
-            {/* Base Scan */}
+          <div className="relative w-full h-[400px] sm:h-[440px] bg-black rounded-2xl overflow-hidden border border-cyan-500/20 shadow-2xl">
             <img
               src={fullOrigUrl}
-              alt="Base MRI"
+              alt="Original MRI Base"
               className="absolute inset-0 w-full h-full object-contain"
               style={imageFilterStyle}
             />
-            {/* Blended Heatmap Overlay */}
             <img
               src={fullGradcamUrl || fullOrigUrl}
               alt="Heatmap Overlay"
@@ -366,23 +373,23 @@ export default function GradCAMViewer({
 
       {/* Hemispheric Asymmetry & Spatial Coverage Bar */}
       {xaiResult?.hemispheric_asymmetry && (
-        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+        <div className="p-4 rounded-2xl bg-black/40 border border-white/10 text-slate-200 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded bg-teal-500/20 text-teal-400 font-mono text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30">
                 ASYMMETRY METRIC
               </span>
               <span className="text-xs font-bold text-white">
                 Bilateral Hemispheric Activation Analysis
               </span>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-950 text-teal-300 border border-teal-800">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 font-mono">
               {xaiResult.hemispheric_asymmetry.dominant_pattern || "Bilateral Symmetric Atrophy"}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+            <div className="p-3 rounded-xl bento-glass border border-white/5">
               <div className="text-[10px] text-slate-400 uppercase font-mono">Asymmetry Index</div>
               <div className="text-base font-bold font-mono text-white mt-0.5">
                 {xaiResult.hemispheric_asymmetry.asymmetry_index > 0 ? "+" : ""}
@@ -390,23 +397,23 @@ export default function GradCAMViewer({
               </div>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+            <div className="p-3 rounded-xl bento-glass border border-white/5">
               <div className="text-[10px] text-slate-400 uppercase font-mono">Left Hemisphere Load</div>
-              <div className="text-base font-bold font-mono text-blue-400 mt-0.5">
+              <div className="text-base font-bold font-mono text-cyan-300 mt-0.5">
                 {((xaiResult.hemispheric_asymmetry.left_hemisphere_load || 0) * 100).toFixed(1)}%
               </div>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+            <div className="p-3 rounded-xl bento-glass border border-white/5">
               <div className="text-[10px] text-slate-400 uppercase font-mono">Right Hemisphere Load</div>
-              <div className="text-base font-bold font-mono text-cyan-400 mt-0.5">
+              <div className="text-base font-bold font-mono text-blue-400 mt-0.5">
                 {((xaiResult.hemispheric_asymmetry.right_hemisphere_load || 0) * 100).toFixed(1)}%
               </div>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60">
+            <div className="p-3 rounded-xl bento-glass border border-white/5">
               <div className="text-[10px] text-slate-400 uppercase font-mono">High-Saliency Area</div>
-              <div className="text-base font-bold font-mono text-teal-400 mt-0.5">
+              <div className="text-base font-bold font-mono text-amber-300 mt-0.5">
                 {xaiResult.saliency_coverage?.high_saliency_area_pct || "18.4"}%
               </div>
             </div>
@@ -415,52 +422,58 @@ export default function GradCAMViewer({
       )}
 
       {/* Anatomical Region Saliency Breakdown Cards */}
-      <div className="space-y-3 pt-2 border-t border-slate-100">
+      <div className="space-y-3 pt-2 border-t border-white/10">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-teal-600" />
+          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
             Regional Neuroanatomical Saliency Breakdown
           </span>
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-slate-400 font-mono">
             Estimated from axial Grad-CAM centroid
           </span>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {regionData.map((reg, idx) => (
-            <div
-              key={idx}
-              className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5"
-            >
-              <div className="text-xs font-semibold text-slate-800 line-clamp-1">{reg.region}</div>
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-mono font-black text-slate-900">
-                  {reg.percentage ? `${reg.percentage}%` : `${(reg.importance * 100).toFixed(1)}%`}
+          {regionData.map((reg, idx) => {
+            const pct = reg.percentage || reg.importance * 100 || 0;
+            const isHigh = pct > 60;
+            return (
+              <div
+                key={idx}
+                className="p-3.5 rounded-2xl bento-glass border border-white/5 space-y-2 hover:border-cyan-500/30 transition-all"
+              >
+                <div className="text-xs font-semibold text-slate-200 line-clamp-1">{reg.region}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-mono font-black text-white">
+                    {pct.toFixed(1)}%
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono ${
+                    isHigh 
+                      ? "bg-amber-950/60 text-amber-300 border-amber-500/40" 
+                      : "bg-cyan-950/60 text-cyan-300 border-cyan-500/40"
+                  }`}>
+                    {isHigh ? "Peak Focus" : "Nominal"}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  (reg.percentage || reg.importance * 100) > 60 
-                    ? "bg-rose-100 text-rose-700" 
-                    : "bg-emerald-100 text-emerald-700"
-                }`}>
-                  {(reg.percentage || reg.importance * 100) > 60 ? "High Focus" : "Nominal"}
-                </span>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isHigh ? "bg-gradient-to-r from-amber-500 to-rose-500" : "bg-gradient-to-r from-cyan-500 to-blue-500"
+                    }`}
+                    style={{ width: `${Math.min(100, pct)}%` }}
+                  />
+                </div>
               </div>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, reg.percentage || reg.importance * 100)}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Clinical Interpretation Guidance */}
-      <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl text-xs text-slate-600 leading-relaxed flex items-start gap-3">
-        <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+      <div className="p-4 bg-cyan-950/20 border border-cyan-500/20 rounded-2xl text-xs text-slate-300 leading-relaxed flex items-start gap-3">
+        <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
         <p>
-          Warm colors (red/yellow) indicate brain voxels whose gradient activations exerted the highest influence on the EfficientNet-B3 classifier. These typically cluster along bilateral temporal lobes and hippocampal atrophy margins in dementia cases.
+          Warm colors (red/amber/yellow) indicate brain voxels whose gradient activations exerted the highest influence on the EfficientNet-B3 classifier. These typically cluster along bilateral temporal lobes and hippocampal atrophy margins in dementia cases.
         </p>
       </div>
     </div>

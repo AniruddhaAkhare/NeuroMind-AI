@@ -1,51 +1,54 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { 
-  Brain, Eye, ArrowLeft, Loader2, AlertCircle, FileText, 
-  CheckCircle2, Download, Calendar, Activity, ShieldCheck, 
-  Clock, Stethoscope, RefreshCw, Sparkles, ShieldAlert,
-  HeartHandshake, Leaf, Pill, Building2, ClipboardList,
-  AlertTriangle, Sun, Moon, Check, ChevronRight
+import {
+  Brain,
+  Download,
+  AlertCircle,
+  FileText,
+  Clock,
+  Sparkles,
+  ArrowLeft,
+  ChevronRight,
+  ShieldAlert,
+  HeartHandshake,
+  Pill,
+  Building2,
+  CheckCircle2,
+  Loader2,
+  ClipboardList,
+  Activity,
+  Layers,
+  Zap,
 } from "lucide-react";
 import { fetchPredictionDetail, downloadReportUrl, generateReport } from "../services/api";
+import Disclaimer from "../components/Disclaimer";
 import GradCAMViewer from "../components/GradCAMViewer";
 import ThreeBrainViewer from "../components/ThreeBrainViewer";
-import Disclaimer from "../components/Disclaimer";
 
 export default function Result() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeDossierTab, setActiveDossierTab] = useState("pillar1");
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [activeDossierTab, setActiveDossierTab] = useState("pillar1"); // 'pillar1' to 'pillar6'
 
   useEffect(() => {
-    async function loadResult() {
+    async function loadData() {
       try {
         setLoading(true);
-        setError(null);
-        if (!id) {
-          setError("No scan ID provided in route");
-          return;
-        }
-        const res = await fetchPredictionDetail(id);
-        if (res.success && res.prediction) {
-          setData(res.prediction);
-        } else {
-          setError(res.error || "Prediction record not found");
-        }
+        const result = await fetchPredictionDetail(id);
+        setData(result);
       } catch (err) {
-        setError(err.response?.data?.error || err.message || "Failed to load prediction details");
+        setError(err.response?.data?.error || "Failed to load prediction results");
       } finally {
         setLoading(false);
       }
     }
-    loadResult();
+    loadData();
   }, [id]);
 
   const handleDownloadPdf = async () => {
-    if (!id) return;
     try {
       setGeneratingPdf(true);
       await generateReport(id);
@@ -59,9 +62,9 @@ export default function Result() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[460px] space-y-4">
-        <Loader2 className="w-9 h-9 text-blue-600 animate-spin" />
-        <p className="text-sm font-medium text-slate-500">
+      <div className="flex flex-col items-center justify-center min-h-[500px] space-y-4 bg-[#030712] text-slate-100">
+        <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
+        <p className="text-sm font-medium text-slate-400 font-mono">
           Loading diagnostic dossier, Grad-CAM saliency maps, and 3D neural reconstruction...
         </p>
       </div>
@@ -70,14 +73,14 @@ export default function Result() {
 
   if (error || !data) {
     return (
-      <div className="max-w-xl mx-auto space-y-5 text-center py-16">
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center justify-center gap-2">
+      <div className="max-w-xl mx-auto space-y-5 text-center py-20 bg-[#030712] text-slate-100">
+        <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-center gap-2">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error || "Record not found"}</span>
         </div>
         <Link
           to="/analyze"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-all shadow-sm shadow-blue-600/20"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 text-sm font-semibold text-white hover:bg-cyan-500 transition-all shadow-lg"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Analyze Another Scan</span>
@@ -104,13 +107,12 @@ export default function Result() {
   } = data;
 
   const classBadges = {
-    NonDemented: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    VeryMildDemented: "bg-blue-50 text-blue-800 border-blue-200",
-    MildDemented: "bg-amber-50 text-amber-800 border-amber-200",
-    ModerateDemented: "bg-rose-50 text-rose-800 border-rose-200",
+    NonDemented: "bg-emerald-950/60 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]",
+    VeryMildDemented: "bg-sky-950/60 text-sky-300 border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.2)]",
+    MildDemented: "bg-amber-950/60 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]",
+    ModerateDemented: "bg-rose-950/60 text-rose-300 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.2)]",
   };
 
-  // Dossier Fallback if not directly returned in top payload
   const dossier = clinical_dossier || {
     summary: "Comprehensive multi-pillar neurocognitive diagnostic dossier generated by NeuroMind AI clinical intelligence engine.",
     pillar_1_diagnostic_assessment: {
@@ -139,14 +141,13 @@ export default function Result() {
     },
     pillar_4_ayurvedic_integrative_regimens: {
       herbal_medhya_rasayana: [
-        { herb: "Brahmi (Bacopa monnieri)", dosage: "350 mg standardized extract daily", rationale: "Promotes hippocampal dendritic arborization and synaptic acetylcholine support" },
-        { herb: "Shankhpushpi (Convolvulus pluricaulis)", dosage: "2 g fine churnam twice daily", rationale: "Calms Vata-Pitta hyperarousal and strengthens cognitive memory recall" },
-        { herb: "Ashwagandha (Withania somnifera)", dosage: "500 mg with warm milk at bedtime", rationale: "Cortisol regulation and slow-wave sleep neuro-restoration" }
+        { herb: "Brahmi (Bacopa monnieri)", dosage: "300-500 mg standardized extract (or 1 tsp Brahmi Ghrita in warm milk)", rationale: "Hippocampal dendritic arborization and synaptic acetylcholine support" },
+        { herb: "Shankhpushpi (Convolvulus pluricaulis)", dosage: "2-3 g powder twice daily", rationale: "Attenuates hyperactive neuro-agitation and calms Vata-Pitta dosha" },
+        { herb: "Ashwagandha (Withania somnifera)", dosage: "500 mg extract with warm milk at bedtime", rationale: "Cortisol regulation and slow-wave sleep restorative support" }
       ],
       panchakarma_and_therapies: [
-        { therapy: "Shirodhara (Forehead Oil Stream)", frequency: "Weekly course under practitioner", benefit: "Calms central autonomic hyperarousal and relieves restlessness" },
-        { therapy: "Pratimarsha Nasya", frequency: "Daily morning (2 drops warm ghee in nostrils)", benefit: "Stimulates cranial sensory channels connected to limbic circuitry" },
-        { therapy: "Padabhyanga (Foot Massage)", frequency: "Nightly before sleep with warm sesame oil", benefit: "Soothes motor restlessness and improves restorative sleep" }
+        { therapy: "Shirodhara with Brahmi Taila", frequency: "Weekly course", benefit: "Calms central autonomic tone and relieves anxiety" },
+        { therapy: "Pratimarsha Nasya", frequency: "Daily morning", benefit: "2 drops warm Anu Taila or cow ghee in nostrils for sensory clarity" }
       ],
       dietary_and_lifestyle_rules: [
         "Lukewarm Sattvic diet rich in cooked mung beans, ghee, and fresh greens.",
@@ -183,52 +184,52 @@ export default function Result() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Top Header Banner */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
+    <div className="min-h-screen bg-[#030712] text-slate-100 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+      {/* ============================================================
+          TOP HEADER BENTO CARD
+      ============================================================ */}
+      <div className="bento-card p-6 sm:p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="space-y-2 relative z-10">
           <Link
             to="/history"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors font-mono"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Diagnostic Audit Log</span>
+            <span>Diagnostic Audit Log</span>
           </Link>
+
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-display">
               Diagnostic Evaluation #{id}
             </h1>
-            <span
-              className={`px-3 py-1 rounded-md text-xs font-bold border ${
-                classBadges[predicted_class] || "bg-slate-100 text-slate-700"
-              }`}
-            >
+            <span className={`px-3 py-1 rounded-xl text-xs font-bold border font-mono ${classBadges[predicted_class]}`}>
               {predicted_class}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Source Scan: <strong>{image_filename}</strong> • Evaluated on{" "}
+
+          <p className="text-xs text-slate-400 font-mono">
+            Source Scan: <strong className="text-slate-200">{image_filename}</strong> • Evaluated on{" "}
             {created_at ? new Date(created_at).toLocaleString() : "Just now"}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 relative z-10">
           <button
             onClick={handleDownloadPdf}
             disabled={generatingPdf}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors border border-slate-200"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bento-glass hover:bg-white/10 text-white font-bold text-xs transition-all border border-white/10 shadow-lg cursor-pointer"
           >
             {generatingPdf ? (
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
             ) : (
-              <Download className="w-4 h-4 text-blue-600" />
+              <Download className="w-4 h-4 text-cyan-400" />
             )}
             <span>Export Clinical PDF Report</span>
           </button>
 
           <Link
             to="/analyze"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-sm shadow-blue-600/20"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-[1.02]"
           >
             <span>Analyze New Scan</span>
           </Link>
@@ -237,74 +238,100 @@ export default function Result() {
 
       <Disclaimer />
 
-      {/* SECTION 1: Deep Learning Classification & 2D Grad-CAM Saliency */}
-      <div className="grid lg:grid-cols-12 gap-8">
-        {/* Left Column: Classification Metrics & Probabilities */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-6">
-            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
-              <Brain className="w-5 h-5 text-blue-600" />
-              <h2 className="text-base font-bold text-slate-900">EfficientNet-B3 Findings</h2>
+      {/* ============================================================
+          SECTION 1: BENTO PUZZLE GRID (3D BRAIN + MODEL METRICS)
+      ============================================================ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT / HERO BENTO: 3D THREE.JS BRAIN (7 Columns) */}
+        <div className="lg:col-span-7 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <h2 className="text-lg font-bold text-white font-display">
+                3D Holographic Connectome & Defect Nexus
+              </h2>
+            </div>
+            <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded-full">
+              Real-Time Localization
+            </span>
+          </div>
+
+          <ThreeBrainViewer
+            predictedClass={predicted_class}
+            confidence={confidence}
+            peakCoordinates={peak_coordinates}
+            regionImportance={xai_result?.region_importance}
+            riskLevel={risk_level}
+          />
+        </div>
+
+        {/* RIGHT BENTO: CLASSIFICATION STATS & CERTAINTY (5 Columns) */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bento-card p-6 rounded-3xl space-y-6">
+            <div className="flex items-center gap-2.5 border-b border-white/10 pb-4">
+              <Brain className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-base font-bold text-white font-display">Deep Learning Inference</h2>
             </div>
 
+            {/* Metric Tiles */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="p-3.5 rounded-2xl bento-glass border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                   Predicted Stage
                 </span>
-                <div className="text-base font-extrabold text-slate-900">{predicted_class}</div>
+                <div className="text-sm font-extrabold text-white truncate">{predicted_class}</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="p-3.5 rounded-2xl bento-glass border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                   Confidence Score
                 </span>
-                <div className="text-base font-mono font-extrabold text-blue-600">
+                <div className="text-sm font-mono font-extrabold text-cyan-400">
                   {(confidence * 100).toFixed(2)}%
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="p-3.5 rounded-2xl bento-glass border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                   Clinical Risk Level
                 </span>
-                <div className="text-base font-extrabold text-slate-900">{risk_level || "MONITORED"}</div>
+                <div className="text-sm font-extrabold text-white">{risk_level || "MONITORED"}</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="p-3.5 rounded-2xl bento-glass border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                   Risk Index
                 </span>
-                <div className="text-base font-mono font-extrabold text-blue-600">
+                <div className="text-sm font-mono font-extrabold text-amber-400">
                   {risk_score ? (risk_score * 100).toFixed(0) : "N/A"}/100
                 </div>
               </div>
             </div>
 
-            {/* Model Calibration & Uncertainty Quantification */}
-            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 space-y-2.5">
+            {/* Clinical Calibration & Uncertainty Quantification */}
+            <div className="p-4 rounded-2xl bg-black/50 border border-cyan-500/20 text-slate-200 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
                   CLINICAL CALIBRATION
                 </span>
-                <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-950 text-blue-300 border border-blue-800">
+                <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/30 font-mono">
                   {data.clinical_certainty_tier || "High Clinical Certainty"}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2 rounded bg-slate-800/80 border border-slate-700/60">
-                  <div className="text-[10px] text-slate-400 font-mono">Uncertainty Margin</div>
+                <div className="p-2.5 rounded-xl bento-glass border border-white/5">
+                  <div className="text-[10px] text-slate-400 font-mono">Uncertainty</div>
                   <div className="text-xs font-bold font-mono text-cyan-400 mt-0.5">
                     {data.uncertainty_margin !== undefined ? `${data.uncertainty_margin}%` : "5.4%"}
                   </div>
                 </div>
-                <div className="p-2 rounded bg-slate-800/80 border border-slate-700/60">
-                  <div className="text-[10px] text-slate-400 font-mono">Shannon Entropy</div>
+                <div className="p-2.5 rounded-xl bento-glass border border-white/5">
+                  <div className="text-[10px] text-slate-400 font-mono">Entropy</div>
                   <div className="text-xs font-bold font-mono text-teal-400 mt-0.5">
                     {data.entropy_score !== undefined ? `${data.entropy_score}` : "0.142"}
                   </div>
                 </div>
-                <div className="p-2 rounded bg-slate-800/80 border border-slate-700/60">
+                <div className="p-2.5 rounded-xl bento-glass border border-white/5">
                   <div className="text-[10px] text-slate-400 font-mono">Scan Quality</div>
                   <div className="text-xs font-bold font-mono text-emerald-400 mt-0.5">
                     {data.anatomical_validation?.scan_quality || "Optimal T1"}
@@ -314,8 +341,8 @@ export default function Result() {
             </div>
 
             {/* Probability Distribution */}
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="space-y-3 pt-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
                 Cognitive State Softmax Probabilities
               </h3>
               {class_probabilities &&
@@ -324,15 +351,15 @@ export default function Result() {
                   return (
                     <div key={cls} className="space-y-1">
                       <div className="flex justify-between text-xs font-semibold">
-                        <span className={isTop ? "text-blue-700 font-bold" : "text-slate-600"}>
+                        <span className={isTop ? "text-cyan-300 font-bold" : "text-slate-400"}>
                           {cls}
                         </span>
-                        <span className="font-mono text-slate-700">{(prob * 100).toFixed(1)}%</span>
+                        <span className="font-mono text-slate-300">{(prob * 100).toFixed(1)}%</span>
                       </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                      <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-white/10">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            isTop ? "bg-blue-600" : "bg-slate-300"
+                            isTop ? "bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" : "bg-slate-700"
                           }`}
                           style={{ width: `${prob * 100}%` }}
                         />
@@ -344,56 +371,41 @@ export default function Result() {
 
             {/* Follow-up Note */}
             {follow_up_recommendation && (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 text-xs text-slate-600 leading-relaxed space-y-1">
-                <div className="font-bold text-slate-800">Clinical Follow-up Recommendation:</div>
+              <div className="p-3.5 rounded-2xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-slate-300 leading-relaxed space-y-1">
+                <div className="font-bold text-cyan-300">Clinical Recommendation:</div>
                 <p>{follow_up_recommendation}</p>
               </div>
             )}
           </div>
         </div>
-
-        {/* Right Column: Upgraded Grad-CAM Saliency Workstation */}
-        <div className="lg:col-span-7 space-y-6">
-          <GradCAMViewer
-            originalImageUrl={image_path}
-            gradcamUrl={gradcam_path}
-            rawHeatmapUrl={raw_heatmap_path}
-            predictedClass={predicted_class}
-            xaiResult={xai_result}
-          />
-        </div>
       </div>
 
-      {/* SECTION 2: Phase 3 Highlight — Interactive 3D Three.js Brain & Neural Workstation */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-blue-600" />
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">
-            3D Stereotactic Brain & Neural Tract Reconstruction
-          </h2>
-        </div>
-        <ThreeBrainViewer
-          predictedClass={predicted_class}
-          confidence={confidence}
-          peakCoordinates={peak_coordinates}
-          regionImportance={xai_result?.region_importance}
-          riskLevel={risk_level}
-        />
-      </div>
+      {/* ============================================================
+          SECTION 2: RADIOLOGIST WORKSTATION (2D GRAD-CAM)
+      ============================================================ */}
+      <GradCAMViewer
+        originalImageUrl={image_path}
+        gradcamUrl={gradcam_path}
+        rawHeatmapUrl={raw_heatmap_path}
+        predictedClass={predicted_class}
+        xaiResult={xai_result}
+      />
 
-      {/* SECTION 3: Phase 4 Highlight — Executive 6-Pillar Clinical Intelligence Dossier */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      {/* ============================================================
+          SECTION 3: EXECUTIVE 6-PILLAR CLINICAL INTELLIGENCE DOSSIER
+      ============================================================ */}
+      <div className="bento-card p-6 sm:p-8 rounded-3xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
-                <ClipboardList className="w-4 h-4 text-blue-600" />
+              <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                <ClipboardList className="w-4 h-4" />
               </span>
-              <h2 className="text-lg font-black text-slate-900 tracking-tight">
+              <h2 className="text-xl font-bold text-white font-display">
                 Executive 6-Pillar Clinical Intelligence Dossier
               </h2>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Evidence-based clinical protocol synthesizing neuroimaging findings, patient safety cautions, caregiver routines, integrative Ayurveda, and specialist directives
             </p>
           </div>
@@ -401,376 +413,250 @@ export default function Result() {
           <button
             onClick={handleDownloadPdf}
             disabled={generatingPdf}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs transition-colors border border-blue-200 self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bento-glass hover:bg-white/10 text-cyan-300 font-bold text-xs transition-colors border border-cyan-500/30 self-start sm:self-auto cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Dossier PDF</span>
           </button>
         </div>
 
-        {/* 6-Pillar Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-          <button
-            onClick={() => setActiveDossierTab("pillar1")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar1"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <Brain className="w-3.5 h-3.5" />
-            <span>1. Diagnostic Staging</span>
-          </button>
-
-          <button
-            onClick={() => setActiveDossierTab("pillar2")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar2"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>2. Cautions & Red Flags</span>
-          </button>
-
-          <button
-            onClick={() => setActiveDossierTab("pillar3")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar3"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <HeartHandshake className="w-3.5 h-3.5" />
-            <span>3. Caregiver Protocol</span>
-          </button>
-
-          <button
-            onClick={() => setActiveDossierTab("pillar4")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar4"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <Leaf className="w-3.5 h-3.5" />
-            <span>4. Ayurvedic Regimens</span>
-          </button>
-
-          <button
-            onClick={() => setActiveDossierTab("pillar5")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar5"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <Pill className="w-3.5 h-3.5" />
-            <span>5. Doctor Medical Rx</span>
-          </button>
-
-          <button
-            onClick={() => setActiveDossierTab("pillar6")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-              activeDossierTab === "pillar6"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>6. Hospital Findings</span>
-          </button>
+        {/* 6-Pillar Navigation Tabs (Bento Pills) */}
+        <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+          {[
+            { id: "pillar1", label: "1. Diagnostic Staging", icon: Brain },
+            { id: "pillar2", label: "2. Cautions & Red Flags", icon: ShieldAlert },
+            { id: "pillar3", label: "3. Caregiver Protocol", icon: HeartHandshake },
+            { id: "pillar4", label: "4. Integrative Ayurveda", icon: Sparkles },
+            { id: "pillar5", label: "5. Pharmacotherapy", icon: Pill },
+            { id: "pillar6", label: "6. Hospital Action Plan", icon: Building2 },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeDossierTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveDossierTab(tab.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+                  isActive
+                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                    : "bento-glass text-slate-400 border-white/5 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-400" : "text-slate-400"}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Tab Content Display */}
-        {activeDossierTab === "pillar1" && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-blue-50/60 border border-blue-100">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 block">
-                  Clinical Rating Scale
+        {/* Pillar Content Container */}
+        <div className="pt-2">
+          {/* PILLAR 1: DIAGNOSTIC STAGING */}
+          {activeDossierTab === "pillar1" && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bento-glass border border-cyan-500/20 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
+                  Clinical Staging Impression
                 </span>
-                <div className="text-base font-extrabold text-slate-900 mt-0.5">
-                  {dossier.pillar_1_diagnostic_assessment?.clinical_dementia_rating}
+                <p className="text-sm text-slate-200 leading-relaxed font-sans">
+                  {dossier.summary || "Clinical findings correlate with mild cognitive impairment."}
+                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                  <div className="text-xs font-bold text-white font-mono">Clinical Dementia Rating (CDR)</div>
+                  <div className="text-xl font-bold text-cyan-300 font-display">
+                    {dossier.pillar_1_diagnostic_assessment?.clinical_dementia_rating || "CDR 1.0"}
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Validated global impairment staging metric based on memory, orientation, and community affairs.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                  <div className="text-xs font-bold text-white font-mono">Longitudinal Rate of Progression</div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {dossier.pillar_1_diagnostic_assessment?.longitudinal_progression ||
+                      "Baseline initial MRI scan on record. Longitudinal rate-of-progression comparison will calibrate on subsequent scans."}
+                  </p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-md text-xs font-bold border ${classBadges[predicted_class]}`}>
-                {predicted_class}
-              </span>
-            </div>
 
-            {/* Longitudinal Rate-of-Progression */}
-            <div className="p-4 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-300 font-mono">
-                  Longitudinal Trajectory & Rate-of-Progression
-                </span>
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-white font-mono">Specific Neuroimaging Findings</div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  {(dossier.pillar_1_diagnostic_assessment?.neuroimaging_findings || []).map((f, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-cyan-400 mt-0.5">•</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                {dossier.pillar_1_diagnostic_assessment?.longitudinal_progression ||
-                  "Baseline MRI evaluation on record. Comparative atrophy rates will dynamically track on subsequent scans."}
-              </p>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Neuroimaging Anatomical Observations
-              </h4>
-              <ul className="space-y-2">
-                {dossier.pillar_1_diagnostic_assessment?.neuroimaging_findings?.map((finding, idx) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>{finding}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* PILLAR 2: CAUTIONS & RED FLAGS */}
+          {activeDossierTab === "pillar2" && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 font-mono">
+                  Critical Clinical Alerts
+                </span>
+                <ul className="space-y-1.5 text-xs text-rose-200">
+                  {(dossier.pillar_2_cautions_and_risks?.critical_flags || []).map((flag, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-rose-400 font-bold">⚠️</span>
+                      <span>{flag}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-200 font-mono">Fall Risk</div>
+                  <p className="text-xs text-slate-400">
+                    {dossier.pillar_2_cautions_and_risks?.fall_and_mobility_risk || "Monitor during transitions"}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-200 font-mono">Wandering Hazard</div>
+                  <p className="text-xs text-slate-400">
+                    {dossier.pillar_2_cautions_and_risks?.wandering_and_disorientation || "Provide orientation cues"}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-200 font-mono">Medication Safety</div>
+                  <p className="text-xs text-slate-400">
+                    {dossier.pillar_2_cautions_and_risks?.medication_adherence_warning || "Caregiver administration"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeDossierTab === "pillar2" && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-                Critical Clinical Safety Red Flags
-              </h4>
-              <div className="space-y-2">
-                {dossier.pillar_2_cautions_and_risks?.critical_flags?.map((flag, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start gap-2.5">
-                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <span>{flag}</span>
+          {/* PILLAR 3: CAREGIVER PROTOCOL */}
+          {activeDossierTab === "pillar3" && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-amber-300 font-mono">🌅 Morning Circadian Alignment</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {dossier.pillar_3_caregiver_daily_protocol?.morning_routine || "Natural morning daylight exposure"}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-cyan-300 font-mono">🧩 Cognitive Stimulation</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {dossier.pillar_3_caregiver_daily_protocol?.cognitive_stimulation || "Reminiscence music & photos"}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-rose-300 font-mono">🌆 Evening Sundowning Mitigation</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {dossier.pillar_3_caregiver_daily_protocol?.evening_sundowning_prevention || "Dim lighting before dusk"}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-blue-300 font-mono">🌙 Night Sleep Hygiene</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {dossier.pillar_3_caregiver_daily_protocol?.night_sleep_protocol || "Unobstructed nightlight paths"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* PILLAR 4: INTEGRATIVE AYURVEDA */}
+          {activeDossierTab === "pillar4" && (
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-3 gap-4">
+                {(dossier.pillar_4_ayurvedic_integrative_regimens?.herbal_medhya_rasayana || []).map((herb, i) => (
+                  <div key={i} className="p-4 rounded-2xl bento-card-emerald border border-emerald-500/30 space-y-1.5">
+                    <div className="text-xs font-bold text-emerald-300 font-display">{herb.herb}</div>
+                    <div className="text-[11px] font-mono text-emerald-200">{herb.dosage}</div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">{herb.rationale}</p>
                   </div>
                 ))}
               </div>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <span className="text-xs font-bold text-slate-900">Fall & Mobility Assessment:</span>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_2_cautions_and_risks?.fall_and_mobility_risk}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <span className="text-xs font-bold text-slate-900">Wandering & Disorientation:</span>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_2_cautions_and_risks?.wandering_and_disorientation}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
-              <span className="font-bold">Medication Safety Directive:</span>
-              <p>{dossier.pillar_2_cautions_and_risks?.medication_adherence_warning}</p>
-            </div>
-          </div>
-        )}
-
-        {activeDossierTab === "pillar3" && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
-                  <Sun className="w-4 h-4" />
-                  <span>Morning Circadian Routine</span>
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-emerald-300 font-mono">Panchakarma & Ayurvedic Therapies</div>
+                <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                  {(dossier.pillar_4_ayurvedic_integrative_regimens?.panchakarma_and_therapies || []).map((p, i) => (
+                    <div key={i} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1">
+                      <div className="font-bold text-slate-200">{p.therapy}</div>
+                      <div className="text-slate-400">{p.benefit}</div>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_3_caregiver_daily_protocol?.morning_routine}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-blue-700">
-                  <Activity className="w-4 h-4" />
-                  <span>Cognitive & Sensory Stimulation</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_3_caregiver_daily_protocol?.cognitive_stimulation}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-indigo-700">
-                  <Moon className="w-4 h-4" />
-                  <span>Sundowning Prevention (Twilight)</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_3_caregiver_daily_protocol?.evening_sundowning_prevention}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-teal-700">
-                  <Clock className="w-4 h-4" />
-                  <span>Night Sleep Protocol</span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_3_caregiver_daily_protocol?.night_sleep_protocol}
-                </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeDossierTab === "pillar4" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Medhya Rasayana Herbs Table */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                <Leaf className="w-4 h-4 text-emerald-600" />
-                Medhya Rasayana Herbal Nootropics
-              </h4>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Herb / Formulation</th>
-                      <th className="p-3">Recommended Dosage</th>
-                      <th className="p-3">Neuroprotective Rationale</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {dossier.pillar_4_ayurvedic_integrative_regimens?.herbal_medhya_rasayana?.map((herb, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="p-3 font-bold text-slate-900">{herb.herb}</td>
-                        <td className="p-3 text-slate-600 font-mono">{herb.dosage}</td>
-                        <td className="p-3 text-slate-600">{herb.rationale}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Panchakarma & Sensory Therapies */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Panchakarma & Sensory Calming Therapies
-              </h4>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {dossier.pillar_4_ayurvedic_integrative_regimens?.panchakarma_and_therapies?.map((th, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-100 space-y-1">
-                    <div className="font-bold text-xs text-emerald-950">{th.therapy}</div>
-                    <div className="text-[11px] font-semibold text-emerald-700">{th.frequency}</div>
-                    <p className="text-[11px] text-slate-600 pt-1 leading-relaxed">{th.benefit}</p>
+          {/* PILLAR 5: PHARMACOTHERAPY */}
+          {activeDossierTab === "pillar5" && (
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {(dossier.pillar_5_medical_prescriptions_and_pharmacotherapy?.first_line_pharmacotherapy || []).map((rx, i) => (
+                  <div key={i} className="p-4 rounded-2xl bento-card-cyan border border-cyan-500/30 space-y-2">
+                    <div className="text-sm font-bold text-cyan-300 font-display">{rx.medication}</div>
+                    <div className="text-xs font-mono text-slate-300">{rx.dosage}</div>
+                    <p className="text-xs text-slate-400">{rx.indications}</p>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Dietary Rules */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="text-xs font-bold text-slate-900">Sattvic Neuro-Nutrition & Vata Balancing Guidelines:</div>
-              <ul className="space-y-1.5 text-xs text-slate-600">
-                {dossier.pillar_4_ayurvedic_integrative_regimens?.dietary_and_lifestyle_rules?.map((rule, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
-                    <span>{rule}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {activeDossierTab === "pillar5" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Conventional Pharmacotherapy Table */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-blue-800 flex items-center gap-1.5">
-                <Pill className="w-4 h-4 text-blue-600" />
-                Doctor-Directed Pharmacotherapy (Physician Supervised)
-              </h4>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Medication</th>
-                      <th className="p-3">Dosage & Titration Protocol</th>
-                      <th className="p-3">Mechanism / Indications</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {dossier.pillar_5_medical_prescriptions_and_pharmacotherapy?.first_line_pharmacotherapy?.map((drug, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="p-3 font-bold text-slate-900">{drug.medication}</td>
-                        <td className="p-3 text-slate-600 font-mono">{drug.dosage}</td>
-                        <td className="p-3 text-slate-600">{drug.indications}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-white font-mono">Clinical Monitoring Schedule</div>
+                <ul className="space-y-1.5 text-xs text-slate-300">
+                  {(dossier.pillar_5_medical_prescriptions_and_pharmacotherapy?.monitoring_schedule || []).map((m, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-cyan-400 font-mono font-bold">{m.parameter}:</span>
+                      <span>{m.rationale}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
+          )}
 
-            {/* Biomarker Surveillance Schedule */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Safety & Organ Biomarker Surveillance Schedule
-              </h4>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {dossier.pillar_5_medical_prescriptions_and_pharmacotherapy?.monitoring_schedule?.map((mon, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <div className="font-bold text-xs text-slate-900">{mon.parameter}</div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">{mon.rationale}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Adverse Effect Warning */}
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 leading-relaxed space-y-1">
-              <span className="font-bold">Adverse Drug Reactions & Precautions:</span>
-              <ul className="list-disc list-inside space-y-1 mt-1 text-rose-800">
-                {dossier.pillar_5_medical_prescriptions_and_pharmacotherapy?.adverse_effect_precautions?.map((adv, idx) => (
-                  <li key={idx}>{adv}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {activeDossierTab === "pillar6" && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <span className="text-xs font-bold text-slate-900 block">
-                  Neuropsychological Testing Battery:
-                </span>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_6_hospital_specialist_findings?.neuropsychological_testing}
+          {/* PILLAR 6: HOSPITAL SPECIALIST FINDINGS */}
+          {activeDossierTab === "pillar6" && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                <div className="text-xs font-bold text-cyan-300 font-mono">Specialist Consultation Timeline</div>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {dossier.pillar_6_hospital_specialist_findings?.specialist_consultation_timeline ||
+                    "Formal evaluation with a Board-Certified Neurologist within 14-30 days."}
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <span className="text-xs font-bold text-slate-900 block">
-                  Specialist Consultation Timeline:
-                </span>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {dossier.pillar_6_hospital_specialist_findings?.specialist_consultation_timeline}
-                </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                  <div className="text-xs font-bold text-white font-mono">Neuropsychological Testing</div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {dossier.pillar_6_hospital_specialist_findings?.neuropsychological_testing ||
+                      "Comprehensive MoCA / MMSE baseline evaluation recommended within 3 weeks."}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bento-glass border border-white/5 space-y-2">
+                  <div className="text-xs font-bold text-white font-mono">Advanced Biomarkers</div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {dossier.pillar_6_hospital_specialist_findings?.advanced_biomarker_imaging ||
+                      "Consider 3T volumetric MRI (NeuroQuant) or Amyloid-PET scan."}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Hospital Multidisciplinary Care Team
-              </h4>
-              <ul className="grid sm:grid-cols-2 gap-2 text-xs text-slate-700">
-                {dossier.pillar_6_hospital_specialist_findings?.multidisciplinary_team?.map((member, idx) => (
-                  <li key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
-                    <Check className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>{member}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

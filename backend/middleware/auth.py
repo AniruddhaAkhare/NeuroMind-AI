@@ -54,11 +54,16 @@ def require_roles(*roles: str):
 
 def get_current_user():
     """
-    Helper: returns the authenticated User object.
-    Must be called within a jwt_required context.
+    Helper: returns the authenticated User object or None.
+    Safe for optional JWT contexts.
     """
-    user_id = get_jwt_identity()
-    return User.query.get(int(user_id))
+    try:
+        user_id = get_jwt_identity()
+        if user_id is not None:
+            return User.query.get(int(user_id))
+    except Exception:
+        pass
+    return None
 
 
 def get_current_user_or_none():

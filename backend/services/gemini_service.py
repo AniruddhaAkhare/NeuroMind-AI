@@ -10,7 +10,22 @@ class GeminiService:
         if self.api_key and self.api_key != "YOUR_GEMINI_API_KEY_HERE" and not self.api_key.startswith("your-"):
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel("gemini-1.5-flash")
+                selected_model_name = None
+                try:
+                    for m in genai.list_models():
+                        if "generateContent" in m.supported_generation_methods:
+                            if "1.5-flash" in m.name:
+                                selected_model_name = m.name
+                                break
+                            elif "1.5-pro" in m.name and not selected_model_name:
+                                selected_model_name = m.name
+                            elif "gemini-pro" in m.name and not selected_model_name:
+                                selected_model_name = m.name
+                except Exception:
+                    pass
+
+                self.model_name = selected_model_name or "gemini-1.5-flash"
+                self.model = genai.GenerativeModel(self.model_name)
             except Exception as e:
                 print(f"Failed to configure Gemini client: {e}")
                 self.model = None
@@ -36,26 +51,35 @@ class GeminiService:
         
         # If Gemini model is active, attempt structured generation
         if self.model:
-            try:
-                prompt = self._build_gemini_dossier_prompt(patient_data, prediction_data, risk_level, region_importance)
-                response = self.model.generate_content(prompt)
-                raw_text = response.text.strip()
-                
-                # Strip markdown json fences if present
-                clean_json = raw_text
-                if clean_json.startswith("```json"):
-                    clean_json = clean_json[7:]
-                elif clean_json.startswith("```"):
-                    clean_json = clean_json[3:]
-                if clean_json.endswith("```"):
-                    clean_json = clean_json[:-3]
-                clean_json = clean_json.strip()
+            candidate_models = [self.model]
+            for fallback_name in ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]:
+                if fallback_name != getattr(self, "model_name", ""):
+                    try:
+                        candidate_models.append(genai.GenerativeModel(fallback_name))
+                    except Exception:
+                        pass
 
-                parsed = json.loads(clean_json)
-                if isinstance(parsed, dict) and "pillar_1_diagnostic_assessment" in parsed:
-                    return parsed
-            except Exception as exc:
-                print(f"Gemini structured dossier generation failed ({exc}); deploying deterministic clinical engine.")
+            for candidate in candidate_models:
+                try:
+                    prompt = self._build_gemini_dossier_prompt(patient_data, prediction_data, risk_level, region_importance)
+                    response = candidate.generate_content(prompt)
+                    raw_text = response.text.strip()
+                    
+                    # Strip markdown json fences if present
+                    clean_json = raw_text
+                    if clean_json.startswith("```json"):
+                        clean_json = clean_json[7:]
+                    elif clean_json.startswith("```"):
+                        clean_json = clean_json[3:]
+                    if clean_json.endswith("```"):
+                        clean_json = clean_json[:-3]
+                    clean_json = clean_json.strip()
+
+                    parsed = json.loads(clean_json)
+                    if isinstance(parsed, dict) and "pillar_1_diagnostic_assessment" in parsed:
+                        return parsed
+                except Exception as exc:
+                    print(f"Gemini attempt with model failed ({exc}); trying next or deterministic engine.")
 
         # Fallback to deterministic expert medical intelligence engine
         return self._build_deterministic_clinical_dossier(predicted_class, confidence, risk_level, risk_score, patient_data, prediction_data)
