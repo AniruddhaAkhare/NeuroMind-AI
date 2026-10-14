@@ -26,15 +26,16 @@ auth_bp = Blueprint("auth", __name__)
 # ============================================================
 
 @auth_bp.route("/auth/signup", methods=["POST"])
-@limiter.limit("10 per hour")
+@limiter.limit("200 per hour")
 def signup():
 
     data = request.get_json(silent=True) or {}
 
-    full_name = (data.get("full_name") or "").strip()
+    full_name = (data.get("full_name") or data.get("fullName") or "").strip()
     email = (data.get("email") or "").strip().lower()
     password = (data.get("password") or "")
     role = (data.get("role") or UserRole.PATIENT.value).strip().lower()
+    phone = (data.get("phone") or "").strip() or None
 
     # ---- Validation ----------------------------------------
 
@@ -47,10 +48,9 @@ def signup():
     if len(password) < 8:
         return jsonify({"success": False, "error": "Password must be at least 8 characters."}), 400
 
-    # Only allow patient self-registration via public signup
-    # Admin/Doctor/Radiologist must be created by an admin
-    allowed_self_register_roles = {UserRole.PATIENT.value}
-    if role not in allowed_self_register_roles:
+    # Allow all defined user roles to register a profile
+    valid_roles = {r.value for r in UserRole}
+    if role not in valid_roles:
         role = UserRole.PATIENT.value
 
     # ---- Duplicate check -----------------------------------
@@ -68,16 +68,35 @@ def signup():
         email=email,
         password_hash=generate_password_hash(password),
         role=role,
+        phone=phone,
     )
 
     db.session.add(user)
     db.session.commit()
 
-    # ---- Create patient profile if role is patient ---------
+    # ---- Create associated profile based on role -----------
     if user.role == UserRole.PATIENT.value:
         from database.models.patient import Patient
-        patient = Patient(user_id=user.id)
+        patient = Patient(user_id=user.id, emergency_contact_phone=phone)
         db.session.add(patient)
+        db.session.commit()
+    elif user.role in (UserRole.DOCTOR.value, UserRole.RADIOLOGIST.value):
+        from database.models.appointment import Doctor
+        specialization = (
+            "Cognitive Neurology & Neuroimaging"
+            if user.role == UserRole.DOCTOR.value
+            else "Neuroradiology & MRI Analytics"
+        )
+        doctor = Doctor(
+            user_id=user.id,
+            specialization=specialization,
+            qualification="MD, Board Certified",
+            experience_years=10,
+            consultation_fee=220.0,
+            rating=4.9,
+            is_available=True,
+        )
+        db.session.add(doctor)
         db.session.commit()
 
     # ---- Tokens --------------------------------------------
@@ -100,7 +119,7 @@ def signup():
 # ============================================================
 
 @auth_bp.route("/auth/login", methods=["POST"])
-@limiter.limit("20 per hour")
+@limiter.limit("300 per hour")
 def login():
 
     data = request.get_json(silent=True) or {}

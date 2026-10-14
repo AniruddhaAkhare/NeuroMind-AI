@@ -52,6 +52,13 @@ def predict():
         # Patients can only upload for themselves unless they are clinical staff
         if current_user.is_patient() and patient.user_id != current_user.id:
             return jsonify({"success": False, "error": "Access denied to this patient record."}), 403
+    elif current_user.is_patient():
+        patient = Patient.query.filter_by(user_id=current_user.id, is_deleted=False).first()
+        if not patient:
+            patient = Patient(user_id=current_user.id, emergency_contact_phone=current_user.phone)
+            db.session.add(patient)
+            db.session.commit()
+        patient_id = patient.id
 
     # --------------------------------------------------------
     # PROCESS PREDICTION

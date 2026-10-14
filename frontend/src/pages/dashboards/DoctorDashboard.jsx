@@ -7,8 +7,10 @@ import {
   Activity, Zap, ArrowRight, Compass, Shield, ChevronRight
 } from "lucide-react";
 import { getPredictionHistory, getDashboardStats } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function DoctorDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [recentScans, setRecentScans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ export default function DoctorDashboard() {
 
             <div className="space-y-1">
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-display">
-                Dr. Marcus Vance, <span className="text-gradient-cyan">MD, PhD</span>
+                {user?.full_name || "Dr. Marcus Vance"}, <span className="text-gradient-cyan">MD, PhD</span>
               </h1>
               <p className="text-sm text-slate-400 font-sans">
                 Chief of Cognitive Neuro-Geriatrics • NeuroMind Brain Institute

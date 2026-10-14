@@ -84,9 +84,14 @@ def list_patients():
 @jwt_required()
 def my_patient_profile():
     user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "error": "User not found."}), 404
+        
     patient = Patient.query.filter_by(user_id=user.id, is_deleted=False).first()
     if not patient:
-        return jsonify({"success": False, "error": "Patient profile not found."}), 404
+        patient = Patient(user_id=user.id, emergency_contact_phone=user.phone)
+        db.session.add(patient)
+        db.session.commit()
     return jsonify({"success": True, "patient": patient.to_dict()}), 200
 
 

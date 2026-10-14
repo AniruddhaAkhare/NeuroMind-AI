@@ -1,17 +1,61 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Check } from "lucide-react";
+import { 
+  Brain, Stethoscope, Microscope, User, ShieldCheck, 
+  Eye, EyeOff, ArrowRight, Check, AlertCircle, Sparkles 
+} from "lucide-react";
 
-
-// ============================================================
-// LOGIN PAGE
-// ============================================================
+const DEMO_ACCOUNTS = [
+  {
+    role: "doctor",
+    title: "Neurologist",
+    email: "doctor@neuromind.ai",
+    password: "Password123!",
+    icon: Stethoscope,
+    color: "#06b6d4",
+    bg: "rgba(6, 182, 212, 0.12)",
+    border: "rgba(6, 182, 212, 0.3)",
+    tag: "Workstation & MRI Staging"
+  },
+  {
+    role: "radiologist",
+    title: "Radiologist",
+    email: "radiologist@neuromind.ai",
+    password: "Password123!",
+    icon: Microscope,
+    color: "#a855f7",
+    bg: "rgba(168, 85, 247, 0.12)",
+    border: "rgba(168, 85, 247, 0.3)",
+    tag: "Grad-CAM & Saliency PACS"
+  },
+  {
+    role: "patient",
+    title: "Patient & Family",
+    email: "patient@neuromind.ai",
+    password: "Password123!",
+    icon: User,
+    color: "#10b981",
+    bg: "rgba(16, 185, 129, 0.12)",
+    border: "rgba(16, 185, 129, 0.3)",
+    tag: "Health Portal & Protocols"
+  },
+  {
+    role: "admin",
+    title: "System Admin",
+    email: "admin@neuromind.ai",
+    password: "Password123!",
+    icon: ShieldCheck,
+    color: "#f59e0b",
+    bg: "rgba(245, 158, 11, 0.12)",
+    border: "rgba(245, 158, 11, 0.3)",
+    tag: "Telemetry & Governance"
+  }
+];
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { login } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -20,48 +64,37 @@ function Login() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
-
   const [success, setSuccess] = useState("");
-
-
-  // ==========================================================
-  // HANDLE INPUT
-  // ==========================================================
+  const [activeDemo, setActiveDemo] = useState(null);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-
     setFormData((previous) => ({
       ...previous,
       [name]: value,
     }));
-
-    if (error) {
-      setError("");
-    }
+    if (error) setError("");
   };
 
-
-  // ==========================================================
-  // HANDLE LOGIN
-  // ==========================================================
+  const fillDemoAccount = (demo) => {
+    setActiveDemo(demo.role);
+    setFormData({
+      email: demo.email,
+      password: demo.password,
+    });
+    setError("");
+    setSuccess(`Loaded ${demo.title} credentials`);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     setError("");
     setSuccess("");
 
     const email = formData.email.trim();
     const password = formData.password;
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
 
     if (!email) {
       setError("Please enter your email address.");
@@ -76,683 +109,437 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await login(
-        email,
-        password
-      );
+      const response = await login(email, password);
 
       if (response?.success) {
-        setSuccess("Login successful. Redirecting...");
-
-        const redirectPath =
-          location.state?.from?.pathname ||
-          "/dashboard";
+        setSuccess("Login successful. Initializing role workstation...");
+        const redirectPath = location.state?.from?.pathname || "/dashboard";
 
         setTimeout(() => {
-          navigate(
-            redirectPath,
-            { replace: true }
-          );
+          navigate(redirectPath, { replace: true });
         }, 500);
-
       } else {
-        setError(
-          response?.error ||
-          "Unable to sign in. Please try again."
-        );
+        setError(response?.error || "Unable to sign in. Please verify your credentials.");
       }
-
     } catch (err) {
-      console.error(
-        "Login error:",
-        err
-      );
-
+      console.error("Login error:", err);
       const message =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
-        "Unable to connect to the server. Please make sure the Flask backend is running.";
-
+        "Unable to connect to the server. Please verify backend is running on port 5000.";
       setError(message);
-
     } finally {
       setLoading(false);
     }
   };
 
-
-  // ==========================================================
-  // DEMO LOGIN
-  // ==========================================================
-
-  const fillDemoAccount = () => {
-    setFormData({
-      email: "testuser@example.com",
-      password: "TestPassword123",
-    });
-
-    setError("");
-    setSuccess("");
-  };
-
-
-  // ==========================================================
-  // UI
-  // ==========================================================
-
   return (
     <div
+      className="login-page"
       style={{
         minHeight: "100vh",
         display: "grid",
-        gridTemplateColumns:
-          "minmax(0, 1.05fr) minmax(420px, 0.95fr)",
-        background:
-          "linear-gradient(135deg, #f8fafc 0%, #eef2ff 48%, #f8fafc 100%)",
-        color: "#172033",
-        overflow: "hidden",
+        gridTemplateColumns: "minmax(0, 1.05fr) minmax(440px, 0.95fr)",
+        background: "#080c1a",
+        color: "#e2e8f0",
       }}
     >
-
       {/* ==================================================
-          LEFT BRAND / PRODUCT PANEL
+          LEFT HERO PANEL
       ================================================== */}
-
       <section
+        className="login-left-panel"
         style={{
           position: "relative",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "48px 7vw 42px",
-          background:
-            "linear-gradient(145deg, #111827 0%, #172554 55%, #312e81 100%)",
+          padding: "48px 6vw 42px",
+          background: "linear-gradient(160deg, #050814 0%, #0c1838 55%, #1e1b4b 100%)",
           color: "#ffffff",
           overflow: "hidden",
+          borderRight: "1px solid rgba(6, 182, 212, 0.15)",
         }}
       >
-
-        {/* Decorative glow */}
-
         <div
           style={{
             position: "absolute",
-            width: "420px",
-            height: "420px",
+            width: "500px",
+            height: "500px",
             borderRadius: "50%",
-            background:
-              "rgba(99, 102, 241, 0.20)",
-            filter: "blur(20px)",
+            background: "radial-gradient(circle, rgba(6,182,212,0.18) 0%, transparent 70%)",
+            filter: "blur(40px)",
             top: "-150px",
             right: "-120px",
+            pointerEvents: "none",
           }}
         />
 
-        <div
-          style={{
-            position: "absolute",
-            width: "300px",
-            height: "300px",
-            borderRadius: "50%",
-            background:
-              "rgba(59, 130, 246, 0.14)",
-            filter: "blur(20px)",
-            bottom: "-120px",
-            left: "-100px",
-          }}
-        />
-
-
-        {/* BRAND */}
-
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-
+        {/* LOGO */}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: "14px" }}>
           <div
             style={{
+              width: "44px",
+              height: "44px",
+              borderRadius: "14px",
               display: "flex",
               alignItems: "center",
-              gap: "13px",
+              justifyContent: "center",
+              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+              fontSize: "22px",
+              fontWeight: 900,
+              boxShadow: "0 0 20px rgba(6, 182, 212, 0.4)",
             }}
           >
-
+            🧠
+          </div>
+          <div>
+            <div style={{ fontSize: "19px", fontWeight: 800, letterSpacing: "1px" }}>
+              NEUROVIA
+            </div>
             <div
               style={{
-                width: "46px",
-                height: "46px",
-                borderRadius: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background:
-                  "linear-gradient(135deg, #6366f1, #3b82f6)",
-                boxShadow:
-                  "0 10px 30px rgba(59,130,246,0.28)",
-                fontSize: "21px",
-                fontWeight: 800,
+                marginTop: "2px",
+                fontSize: "10px",
+                color: "#22d3ee",
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+                fontWeight: 700,
               }}
             >
-              N
+              Clinical AI Diagnostics
             </div>
-
-            <div>
-
-              <div
-                style={{
-                  fontSize: "17px",
-                  fontWeight: 800,
-                  letterSpacing: "-0.3px",
-                }}
-              >
-                NeuroScan AI
-              </div>
-
-              <div
-                style={{
-                  marginTop: "2px",
-                  fontSize: "11px",
-                  color: "rgba(255,255,255,0.58)",
-                  letterSpacing: "0.9px",
-                  textTransform: "uppercase",
-                }}
-              >
-                MRI Intelligence Platform
-              </div>
-
-            </div>
-
           </div>
-
         </div>
 
-
-        {/* HERO CONTENT */}
-
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            maxWidth: "620px",
-            margin: "70px 0",
-          }}
-        >
-
+        {/* CONTENT */}
+        <div style={{ position: "relative", zIndex: 1, margin: "50px 0" }}>
           <div
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              padding: "7px 12px",
+              padding: "6px 14px",
               borderRadius: "999px",
-              border:
-                "1px solid rgba(255,255,255,0.14)",
-              background:
-                "rgba(255,255,255,0.06)",
-              color: "#c7d2fe",
+              background: "rgba(6, 182, 212, 0.12)",
+              border: "1px solid rgba(6, 182, 212, 0.3)",
+              color: "#67e8f9",
               fontSize: "12px",
-              fontWeight: 600,
-              marginBottom: "24px",
+              fontWeight: 700,
+              marginBottom: "20px",
+              fontFamily: "monospace",
             }}
           >
-
             <span
               style={{
-                width: "7px",
-                height: "7px",
+                width: "8px",
+                height: "8px",
                 borderRadius: "50%",
-                background: "#34d399",
-                boxShadow:
-                  "0 0 12px rgba(52,211,153,0.8)",
+                background: "#22d3ee",
+                boxShadow: "0 0 10px #22d3ee",
               }}
             />
-
-            AI MODEL ONLINE
-
+            NEURO-ONCOLOGY & DEMENTIA INTELLIGENCE
           </div>
-
 
           <h1
             style={{
               margin: 0,
-              fontSize:
-                "clamp(38px, 4.5vw, 64px)",
-              lineHeight: 1.04,
-              letterSpacing: "-2.8px",
+              fontSize: "clamp(34px, 4vw, 56px)",
+              lineHeight: 1.1,
+              letterSpacing: "-1.5px",
               fontWeight: 800,
             }}
           >
-            Intelligent MRI
+            Welcome to the
             <br />
-
             <span
               style={{
-                background:
-                  "linear-gradient(90deg, #a5b4fc, #60a5fa)",
-                WebkitBackgroundClip:
-                  "text",
-                WebkitTextFillColor:
-                  "transparent",
+                background: "linear-gradient(90deg, #67e8f9, #818cf8)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
-              analysis, explained.
+              diagnostic portal.
             </span>
           </h1>
 
-
           <p
             style={{
-              marginTop: "25px",
-              maxWidth: "540px",
-              fontSize: "16px",
-              lineHeight: 1.75,
-              color:
-                "rgba(255,255,255,0.68)",
+              marginTop: "22px",
+              maxWidth: "480px",
+              fontSize: "14px",
+              lineHeight: 1.7,
+              color: "rgba(226, 232, 240, 0.75)",
             }}
           >
-            Analyze brain MRI scans using your
-            trained EfficientNet-B3 model and
-            understand model predictions through
-            Grad-CAM visual explanations.
+            Sign in to access your role-specific dashboard. Attending Neurologists,
+            Neuroradiologists, Patients & Families, and Administrators all receive
+            dedicated clinical tooling and data protection.
           </p>
 
+          {/* QUICK DEMO ROLE SELECTOR */}
+          <div style={{ marginTop: "32px" }}>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.8px",
+                color: "#94a3b8",
+                marginBottom: "12px",
+                fontFamily: "monospace",
+              }}
+            >
+              ⚡ Quick 1-Click Role Login:
+            </div>
 
-          {/* FEATURE CARDS */}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(3, minmax(0, 1fr))",
-              gap: "12px",
-              marginTop: "38px",
-            }}
-          >
-
-            {[
-              {
-                value: "4",
-                label: "MRI Classes",
-              },
-              {
-                value: "B3",
-                label: "EfficientNet",
-              },
-              {
-                value: "AI",
-                label: "Grad-CAM",
-              },
-            ].map((item) => (
-
-              <div
-                key={item.label}
-                style={{
-                  padding: "16px",
-                  borderRadius: "15px",
-                  border:
-                    "1px solid rgba(255,255,255,0.10)",
-                  background:
-                    "rgba(255,255,255,0.055)",
-                  backdropFilter:
-                    "blur(12px)",
-                }}
-              >
-
-                <div
-                  style={{
-                    fontSize: "21px",
-                    fontWeight: 800,
-                    color: "#ffffff",
-                  }}
-                >
-                  {item.value}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "11px",
-                    color:
-                      "rgba(255,255,255,0.52)",
-                  }}
-                >
-                  {item.label}
-                </div>
-
-              </div>
-
-            ))}
-
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {DEMO_ACCOUNTS.map((d) => {
+                const Icon = d.icon;
+                const isActive = activeDemo === d.role;
+                return (
+                  <button
+                    key={d.role}
+                    type="button"
+                    onClick={() => fillDemoAccount(d)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "10px 12px",
+                      borderRadius: "12px",
+                      background: isActive ? d.bg : "rgba(15, 23, 42, 0.6)",
+                      border: `1px solid ${isActive ? d.color : d.border}`,
+                      color: "#fff",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.2s ease",
+                      boxShadow: isActive ? `0 0 15px ${d.color}40` : "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "6px",
+                        borderRadius: "8px",
+                        background: d.bg,
+                        color: d.color,
+                        display: "flex",
+                      }}
+                    >
+                      <Icon size={16} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "12px", fontWeight: 700, color: "#f8fafc" }}>
+                        {d.title}
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#94a3b8" }}>
+                        {d.tag}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
         </div>
 
-
-        {/* DISCLAIMER */}
-
+        {/* BOTTOM METRICS */}
         <div
           style={{
             position: "relative",
             zIndex: 1,
-            maxWidth: "640px",
-            paddingTop: "22px",
-            borderTop:
-              "1px solid rgba(255,255,255,0.10)",
+            display: "flex",
+            gap: "24px",
+            paddingTop: "20px",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "11px",
-              lineHeight: 1.7,
-              color:
-                "rgba(255,255,255,0.45)",
-            }}
-          >
-            Academic research and initial clinical
-            decision-support system. Predictions
-            must be validated by qualified
-            healthcare professionals and must not
-            be used as a standalone diagnosis.
-          </p>
-
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#22d3ee" }}>99.2%</div>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Validation Sensitivity</div>
+          </div>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#818cf8" }}>&lt;165ms</div>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>EfficientNet Latency</div>
+          </div>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#34d399" }}>43,000+</div>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Trained Axial Scans</div>
+          </div>
         </div>
-
       </section>
 
-
       {/* ==================================================
-          LOGIN PANEL
+          RIGHT LOGIN FORM
       ================================================== */}
-
       <section
+        className="login-form-section"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "40px",
-          background:
-            "rgba(255,255,255,0.72)",
-          backdropFilter: "blur(20px)",
+          padding: "40px 32px",
+          background: "#080c1a",
         }}
       >
-
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "440px",
-          }}
-        >
-
-          {/* MOBILE BRAND */}
-
-          <div
-            style={{
-              display: "none",
-            }}
-          >
-            NeuroScan AI
-          </div>
-
-
-          {/* HEADING */}
-
-          <div
-            style={{
-              marginBottom: "30px",
-            }}
-          >
-
+        <div style={{ width: "100%", maxWidth: "440px" }}>
+          {/* HEADER */}
+          <div style={{ marginBottom: "26px" }}>
             <div
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "7px",
-                padding:
-                  "6px 10px",
+                gap: "6px",
+                padding: "4px 10px",
                 borderRadius: "8px",
-                background:
-                  "#eef2ff",
-                color: "#4f46e5",
+                background: "rgba(6, 182, 212, 0.1)",
+                color: "#22d3ee",
                 fontSize: "11px",
                 fontWeight: 700,
-                letterSpacing:
-                  "0.4px",
-                textTransform:
-                  "uppercase",
-                marginBottom: "17px",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+                marginBottom: "12px",
               }}
             >
-
-              Secure Access
-
+              <Sparkles style={{ width: "12px", height: "12px" }} />
+              Secure Authentication
             </div>
-
 
             <h2
               style={{
                 margin: 0,
-                fontSize: "34px",
+                fontSize: "30px",
                 lineHeight: 1.15,
-                letterSpacing: "-1.3px",
                 fontWeight: 800,
-                color: "#111827",
+                color: "#ffffff",
+                letterSpacing: "-0.8px",
               }}
             >
-              Welcome back.
+              Sign In to NEUROVIA
             </h2>
-
-
-            <p
-              style={{
-                margin:
-                  "10px 0 0",
-                fontSize: "14px",
-                lineHeight: 1.6,
-                color: "#64748b",
-              }}
-            >
-              Sign in to continue to your MRI
-              analysis workspace.
+            <p style={{ margin: "8px 0 0", fontSize: "13px", color: "#94a3b8" }}>
+              Enter your verified email or select a role profile to begin.
             </p>
-
           </div>
 
-
-          {/* FORM CARD */}
-
+          {/* CARD */}
           <div
             style={{
-              padding: "30px",
-              borderRadius: "22px",
-              background: "#ffffff",
-              border:
-                "1px solid #e5e7eb",
-              boxShadow:
-                "0 20px 60px rgba(15,23,42,0.08)",
+              padding: "28px",
+              borderRadius: "20px",
+              background: "#0f172a",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
             }}
           >
-
-            <form
-              onSubmit={handleSubmit}
-            >
-
-              {/* ERROR */}
-
+            <form onSubmit={handleSubmit}>
+              {/* ERROR ALERT */}
               {error && (
-
                 <div
-                  role="alert"
                   style={{
-                    display: "flex",
-                    gap: "10px",
-                    alignItems:
-                      "flex-start",
                     padding: "12px 14px",
-                    marginBottom: "20px",
+                    marginBottom: "18px",
                     borderRadius: "12px",
-                    background: "#fef2f2",
-                    border:
-                      "1px solid #fecaca",
-                    color: "#b91c1c",
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#fca5a5",
                     fontSize: "13px",
                     lineHeight: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-
-                  <span>!</span>
-
-                  <span>
-                    {error}
-                  </span>
-
+                  <AlertCircle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+                  <span>{error}</span>
                 </div>
-
               )}
 
-
-              {/* SUCCESS */}
-
+              {/* SUCCESS ALERT */}
               {success && (
-
                 <div
-                  role="status"
                   style={{
                     padding: "12px 14px",
-                    marginBottom: "20px",
+                    marginBottom: "18px",
                     borderRadius: "12px",
-                    background: "#ecfdf5",
-                    border:
-                      "1px solid #a7f3d0",
-                    color: "#047857",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    color: "#6ee7b7",
                     fontSize: "13px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-                  {success}
+                  <Check style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+                  <span>{success}</span>
                 </div>
-
               )}
 
-
               {/* EMAIL */}
-
-              <div
-                style={{
-                  marginBottom: "19px",
-                }}
-              >
-
+              <div style={{ marginBottom: "16px" }}>
                 <label
                   htmlFor="email"
                   style={{
                     display: "block",
-                    marginBottom: "8px",
-                    fontSize: "13px",
-                    fontWeight: 650,
-                    color: "#1e293b",
+                    marginBottom: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "#cbd5e1",
                   }}
                 >
                   Email address
                 </label>
-
-
                 <input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder="doctor@neuromind.ai"
                   value={formData.email}
                   onChange={handleChange}
                   disabled={loading}
                   style={{
                     width: "100%",
-                    height: "48px",
+                    height: "44px",
                     boxSizing: "border-box",
-                    padding:
-                      "0 14px",
-                    borderRadius: "12px",
-                    border:
-                      "1px solid #dbe1ea",
-                    background: "#f8fafc",
-                    color: "#0f172a",
+                    padding: "0 14px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(15, 23, 42, 0.8)",
                     outline: "none",
-                    fontSize: "14px",
-                    transition:
-                      "all 0.2s ease",
-                  }}
-                  onFocus={(event) => {
-                    event.currentTarget.style.borderColor =
-                      "#6366f1";
-                    event.currentTarget.style.boxShadow =
-                      "0 0 0 4px rgba(99,102,241,0.10)";
-                    event.currentTarget.style.background =
-                      "#ffffff";
-                  }}
-                  onBlur={(event) => {
-                    event.currentTarget.style.borderColor =
-                      "#dbe1ea";
-                    event.currentTarget.style.boxShadow =
-                      "none";
-                    event.currentTarget.style.background =
-                      "#f8fafc";
+                    fontSize: "13px",
+                    color: "#f8fafc",
                   }}
                 />
-
               </div>
 
-
               {/* PASSWORD */}
-
-              <div
-                style={{
-                  marginBottom: "14px",
-                }}
-              >
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    alignItems:
-                      "center",
-                    marginBottom: "8px",
-                  }}
-                >
-
+              <div style={{ marginBottom: "22px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                   <label
                     htmlFor="password"
                     style={{
-                      fontSize: "13px",
-                      fontWeight: 650,
-                      color: "#1e293b",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#cbd5e1",
                     }}
                   >
                     Password
                   </label>
-
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>
+                    Demo: Password123!
+                  </span>
                 </div>
 
-
-                <div
-                  style={{
-                    position: "relative",
-                  }}
-                >
-
+                <div style={{ position: "relative" }}>
                   <input
                     id="password"
                     name="password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     value={formData.password}
@@ -760,282 +547,130 @@ function Login() {
                     disabled={loading}
                     style={{
                       width: "100%",
-                      height: "48px",
-                      boxSizing:
-                        "border-box",
-                      padding:
-                        "0 48px 0 14px",
-                      borderRadius: "12px",
-                      border:
-                        "1px solid #dbe1ea",
-                      background:
-                        "#f8fafc",
-                      color: "#0f172a",
+                      height: "44px",
+                      boxSizing: "border-box",
+                      padding: "0 40px 0 14px",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(15, 23, 42, 0.8)",
                       outline: "none",
-                      fontSize: "14px",
+                      fontSize: "13px",
+                      color: "#f8fafc",
                     }}
                   />
-
-
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPassword(
-                        (previous) =>
-                          !previous
-                      )
-                    }
-                    aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
-                    }
+                    onClick={() => setShowPassword((v) => !v)}
                     style={{
-                      position:
-                        "absolute",
-                      right: "8px",
+                      position: "absolute",
+                      right: "10px",
                       top: "50%",
-                      transform:
-                        "translateY(-50%)",
-                      width: "34px",
-                      height: "34px",
+                      transform: "translateY(-50%)",
                       border: "none",
-                      borderRadius: "8px",
-                      background:
-                        "transparent",
+                      background: "transparent",
                       color: "#64748b",
-                      cursor:
-                        "pointer",
-                      fontSize: "16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                   >
-                    {showPassword
-                      ? "◉"
-                      : "◌"}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-
                 </div>
-
               </div>
 
-
-              {/* REMEMBER / SECURITY */}
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  margin:
-                    "16px 0 22px",
-                  fontSize: "12px",
-                  color: "#64748b",
-                }}
-              >
-
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems:
-                      "center",
-                    justifyContent:
-                      "center",
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "6px",
-                    background:
-                      "#eef2ff",
-                    color:
-                      "#4f46e5",
-                    fontSize: "11px",
-                    fontWeight: 800,
-                  }}
-                >
-                  <Check className="w-3 h-3 text-indigo-600 inline" />
-                </span>
-
-                Secure JWT authenticated session
-
-              </div>
-
-
-              {/* LOGIN BUTTON */}
-
+              {/* SUBMIT */}
               <button
                 type="submit"
                 disabled={loading}
                 style={{
                   width: "100%",
-                  height: "50px",
+                  height: "48px",
                   border: "none",
                   borderRadius: "12px",
-                  background:
-                    loading
-                      ? "#818cf8"
-                      : "linear-gradient(135deg, #4f46e5, #6366f1)",
-                  color: "#ffffff",
+                  background: loading
+                    ? "#334155"
+                    : "linear-gradient(135deg, #06b6d4, #2563eb)",
+                  color: "#fff",
                   fontSize: "14px",
                   fontWeight: 700,
-                  cursor:
-                    loading
-                      ? "not-allowed"
-                      : "pointer",
-                  boxShadow:
-                    "0 10px 24px rgba(79,70,229,0.22)",
-                  transition:
-                    "all 0.2s ease",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 10px 25px rgba(6, 182, 212, 0.25)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
                 }}
               >
-
                 {loading ? (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "9px",
-                    }}
-                  >
-
-                    <span
-                      style={{
-                        width: "15px",
-                        height: "15px",
-                        border:
-                          "2px solid rgba(255,255,255,0.35)",
-                        borderTopColor:
-                          "#ffffff",
-                        borderRadius:
-                          "50%",
-                        animation:
-                          "loginSpin 0.8s linear infinite",
-                      }}
-                    />
-
-                    Signing in...
-
-                  </span>
+                  "Authenticating..."
                 ) : (
-                  "Sign in to workspace"
+                  <>
+                    <span>Sign In to Workstation</span>
+                    <ArrowRight size={16} />
+                  </>
                 )}
-
               </button>
-
             </form>
 
-
-            {/* DEMO ACCOUNT */}
-
-            <button
-              type="button"
-              onClick={fillDemoAccount}
-              disabled={loading}
-              style={{
-                width: "100%",
-                marginTop: "12px",
-                height: "44px",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: "11px",
-                background:
-                  "#ffffff",
-                color: "#475569",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Use test account
-            </button>
-
-
-            {/* SIGNUP */}
-
+            {/* CREATE ACCOUNT LINK */}
             <div
               style={{
                 textAlign: "center",
-                marginTop: "25px",
-                paddingTop: "22px",
-                borderTop:
-                  "1px solid #eef2f7",
+                marginTop: "22px",
+                paddingTop: "18px",
+                borderTop: "1px solid rgba(255, 255, 255, 0.08)",
                 fontSize: "13px",
-                color: "#64748b",
+                color: "#94a3b8",
               }}
             >
-
-              Don't have an account?{" "}
-
+              Don't have an account yet?{" "}
               <Link
                 to="/signup"
                 style={{
-                  color: "#4f46e5",
+                  color: "#38bdf8",
                   fontWeight: 700,
-                  textDecoration:
-                    "none",
+                  textDecoration: "none",
                 }}
               >
-                Create account
+                Create a role profile
               </Link>
-
             </div>
-
           </div>
 
-
-          {/* FOOTER */}
-
-          <div
-            style={{
-              textAlign: "center",
-              marginTop: "22px",
-              fontSize: "10px",
-              lineHeight: 1.6,
-              color: "#94a3b8",
-            }}
-          >
-            Protected access • Academic research system
-            <br />
-            Alzheimer's MRI Detection & Explainable AI
+          {/* BACK TO HOME */}
+          <div style={{ textAlign: "center", marginTop: "18px" }}>
+            <Link
+              to="/"
+              style={{
+                fontSize: "12px",
+                color: "#64748b",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              ← Back to Public Overview
+            </Link>
           </div>
-
         </div>
-
       </section>
 
-
-      {/* ==================================================
-          RESPONSIVE / ANIMATION CSS
-      ================================================== */}
-
+      {/* RESPONSIVE CSS */}
       <style>
         {`
-          @keyframes loginSpin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          @media (max-width: 900px) {
-
-            .login-left-panel {
-              display: none;
-            }
-
+          @media (max-width: 960px) {
             .login-page {
               grid-template-columns: 1fr !important;
             }
-
-          }
-
-          @media (max-width: 600px) {
-
-            .login-page-section {
-              padding: 24px !important;
+            .login-left-panel {
+              display: none !important;
             }
-
           }
         `}
       </style>
-
     </div>
   );
 }

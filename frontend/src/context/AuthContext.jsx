@@ -167,25 +167,25 @@ export function AuthProvider({ children }) {
   const signup = async (
     fullName,
     email,
-    password
+    password,
+    role = "patient",
+    extraData = {}
   ) => {
     try {
       const response =
         await signupUser({
+          full_name: fullName,
           fullName,
           email,
           password,
+          role,
+          ...extraData,
         });
 
-
       /*
-       * Your Flask signup endpoint currently
-       * returns an access_token.
-       *
-       * If a token is returned, store it and
-       * authenticate the user immediately.
+       * Flask signup endpoint returns access_token & refresh_token.
+       * If a token is returned, store it and authenticate the user immediately.
        */
-
       if (
         response?.success &&
         response?.access_token
@@ -194,7 +194,12 @@ export function AuthProvider({ children }) {
           "access_token",
           response.access_token
         );
-
+        if (response?.refresh_token) {
+          localStorage.setItem(
+            "refresh_token",
+            response.refresh_token
+          );
+        }
 
         if (response.user) {
           localStorage.setItem(
@@ -209,7 +214,6 @@ export function AuthProvider({ children }) {
           );
         }
       }
-
 
       return response;
 
