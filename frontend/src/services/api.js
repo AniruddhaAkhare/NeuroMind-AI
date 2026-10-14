@@ -152,6 +152,7 @@ export const getDashboardStats = async () => (await api.get("/analytics/dashboar
 // ============================================================
 
 export const searchHospitals = async (params) => (await api.get("/hospitals/search", { params })).data;
+export const directBookHospital = async (data) => (await api.post("/hospitals/direct-book", data)).data;
 export const getDoctors = async (params) => (await api.get("/doctors", { params })).data;
 export const getDoctorById = async (id) => (await api.get(`/doctors/${id}`)).data;
 
